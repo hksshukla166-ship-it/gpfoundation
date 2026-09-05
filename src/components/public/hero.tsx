@@ -66,7 +66,7 @@ export function Hero({
             B.SC. · B.COM. · B.A. · CGPSC · UPSC
           </div>
           <p className="text-xs tracking-[0.35em] text-gold">{slide.subtitle || settings.heroSubheading}</p>
-          <h1 className="mt-4 max-w-4xl font-display text-4xl leading-tight md:text-6xl">{slide.heading || settings.heroHeading}</h1>
+          <h1 className="mt-4 max-w-4xl font-display text-2xl leading-snug md:text-4xl">{slide.heading || settings.heroHeading}</h1>
           <p className="mt-6 max-w-2xl text-lg text-white/80">{slide.supporting || settings.heroSupporting}</p>
           <div className="mt-10 flex flex-wrap gap-4">
             <Link href={slide.ctaHref || settings.joinCtaHref} className="bg-gold px-7 py-3 text-xs font-bold tracking-[0.22em] text-navy hover:bg-gold-2">

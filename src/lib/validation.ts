@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ADDITIONAL_PREPARATION_IDS } from "@/lib/catalog";
+import { ADDITIONAL_PREPARATION_IDS, EXAM_CENTER_IDS } from "@/lib/catalog";
 
 export const enquirySchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -12,6 +12,7 @@ export const enquirySchema = z.object({
 export const registrationSchema = z.object({
   courseId: z.string().min(1),
   category: z.enum(["ST_SC", "OBC", "GENERAL"]),
+  examCenter: z.enum(EXAM_CENTER_IDS),
   fullName: z.string().trim().min(2).max(120),
   fatherName: z.string().trim().min(2).max(120),
   motherName: z.string().trim().min(2).max(120),

@@ -31,7 +31,7 @@ export function PublicFooter({ settings }: { settings: Settings }) {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-3">
         <div>
           <p className="font-brand text-2xl tracking-[0.16em]">{settings.instituteName}</p>
-          <p className="mt-3 font-display text-gold">{settings.tagline}</p>
+          <p className="mt-3 font-display text-sm leading-relaxed text-gold">{settings.tagline}</p>
           <p className="mt-4 text-sm text-white/70">{settings.footerText}</p>
         </div>
         <div>

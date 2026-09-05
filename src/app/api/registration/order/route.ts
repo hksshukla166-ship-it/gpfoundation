@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       amount,
       currency: "INR",
       receipt: applicationId,
-      notes: { applicationId, courseId: course.id, category: parsed.data.category },
+      notes: { applicationId, courseId: course.id, category: parsed.data.category, examCenter: parsed.data.examCenter },
     });
   } catch {
     return NextResponse.json({ error: "Online payment is not available right now. Please contact the institute." }, { status: 503 });
@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       applicantId: applicant.id,
       courseId: course.id,
       category: parsed.data.category,
+      examCenter: parsed.data.examCenter,
       feePaise: amount,
       status: "PAYMENT_INITIATED",
       photoUrl: parsed.data.photoUrl || null,

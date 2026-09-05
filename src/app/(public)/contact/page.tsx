@@ -39,7 +39,7 @@ export default async function ContactPage() {
               {settings.email}
             </a>
           </p>
-          <p className="font-display text-xl text-navy">{settings.tagline}</p>
+          <p className="font-display text-base leading-relaxed text-navy">{settings.tagline}</p>
         </div>
         <EnquiryForm
           mainPrograms={mainAdmissionCourses(courses).map((c) => c.name)}

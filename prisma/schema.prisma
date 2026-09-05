@@ -14,6 +14,15 @@ enum Category {
   GENERAL
 }
 
+enum ExamCenter {
+  BIJAPUR
+  DANTEWADA
+  KONDAGAON
+  NARAYANPUR
+  BASTAR
+  KANKER
+}
+
 enum Gender {
   MALE
   FEMALE
@@ -91,7 +100,7 @@ model Admin {
 model WebsiteSettings {
   id              String  @id @default("default")
   instituteName   String  @default("GP FOUNDATION, KONDAGAON")
-  tagline         String  @default("आपका लक्ष्य, हमारी जिम्मेदारी।")
+  tagline         String  @default("गुरु द्रोणाचार्य लक्ष्य उच्च शैक्षणिक संस्थान द्वारा संचालित छत्तीसगढ़ सोसायटी पंजीयन अधिनियम के अधीन पंजीकृत संस्था")
   phone           String  @default("+91-81030 68959")
   email           String  @default("foundationgp350@gmail.com")
   address         String  @default("Kanya Shala Road, Indian Gas Agency के सामने, Deepak Complex, Kondagaon, Chhattisgarh")
@@ -107,7 +116,7 @@ model WebsiteSettings {
   defaultImageUrl String?
   admissionOpen   Boolean @default(true)
   maintenanceMode Boolean @default(false)
-  heroHeading     String  @default("अपने लक्ष्य को बनाइए अपनी पहचान")
+  heroHeading     String  @default("गुरु द्रोणाचार्य लक्ष्य उच्च शैक्षणिक संस्थान द्वारा संचालित छत्तीसगढ़ सोसायटी पंजीयन अधिनियम के अधीन पंजीकृत संस्था")
   heroSubheading  String  @default("GP FOUNDATION, KONDAGAON")
   heroSupporting  String  @default("B.Sc. | B.Com. | B.A. | CGPSC | UPSC")
   joinCtaLabel    String  @default("JOIN NOW")
@@ -200,6 +209,7 @@ model CourseRegistration {
   course          Course            @relation(fields: [courseId], references: [id])
   courseId        String
   category        Category
+  examCenter      ExamCenter        @default(KONDAGAON)
   feePaise        Int
   status          ApplicationStatus @default(PENDING)
   photoUrl        String?
@@ -216,6 +226,7 @@ model CourseRegistration {
   @@index([status, createdAt])
   @@index([courseId])
   @@index([category])
+  @@index([examCenter])
   @@index([applicationId])
 }
 

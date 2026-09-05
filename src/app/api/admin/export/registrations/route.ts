@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { additionalPreparationLabel } from "@/lib/catalog";
+import { additionalPreparationLabel, examCenterLabel } from "@/lib/catalog";
 
 export async function GET() {
   const session = await getSession();
@@ -11,7 +11,7 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     take: 5000,
   });
-  const header = ["Application ID", "Name", "Mobile", "Course", "Additional Classes", "Category", "Fee Paise", "Payment", "Status", "Date"];
+  const header = ["Application ID", "Name", "Mobile", "Course", "Additional Classes", "Category", "Exam Centre", "Fee Paise", "Payment", "Status", "Date"];
   const csv = [
     header.join(","),
     ...rows.map((r) =>
@@ -22,6 +22,7 @@ export async function GET() {
         r.course.name,
         r.additionalPreparations.map((id) => additionalPreparationLabel(id)).join("; "),
         r.category,
+        examCenterLabel(r.examCenter),
         r.feePaise,
         r.payments[0]?.status || "",
         r.status,

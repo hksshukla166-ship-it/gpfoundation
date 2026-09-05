@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatInrFromPaise } from "@/lib/fees";
-import { additionalPreparationLabel } from "@/lib/catalog";
+import { additionalPreparationLabel, examCenterLabel } from "@/lib/catalog";
 
 export default async function PrintRegistrationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -23,6 +23,7 @@ export default async function PrintRegistrationPage({ params }: { params: Promis
           : "None"}
       </p>
       <p>Category: {row.category.replace("_", "/")}</p>
+      <p>Exam Centre: {examCenterLabel(row.examCenter)}</p>
       <p>Fee: {formatInrFromPaise(row.feePaise)}</p>
       <p>Payment: {row.payments[0]?.status}</p>
       <p>Status: {row.status}</p>

@@ -13,7 +13,7 @@ export function isNeonConfigured() {
 export const DEFAULT_SETTINGS: WebsiteSettings = {
   id: "default",
   instituteName: "GP FOUNDATION, KONDAGAON",
-  tagline: "आपका लक्ष्य, हमारी जिम्मेदारी।",
+  tagline: "गुरु द्रोणाचार्य लक्ष्य उच्च शैक्षणिक संस्थान द्वारा संचालित छत्तीसगढ़ सोसायटी पंजीयन अधिनियम के अधीन पंजीकृत संस्था",
   phone: "+91-81030 68959",
   email: "foundationgp350@gmail.com",
   address: "Kanya Shala Road, Indian Gas Agency के सामने, Deepak Complex, Kondagaon, Chhattisgarh",
@@ -30,7 +30,7 @@ export const DEFAULT_SETTINGS: WebsiteSettings = {
   defaultImageUrl: null,
   admissionOpen: true,
   maintenanceMode: false,
-  heroHeading: "अपने लक्ष्य को बनाइए अपनी पहचान",
+  heroHeading: "गुरु द्रोणाचार्य लक्ष्य उच्च शैक्षणिक संस्थान द्वारा संचालित छत्तीसगढ़ सोसायटी पंजीयन अधिनियम के अधीन पंजीकृत संस्था",
   heroSubheading: "GP FOUNDATION, KONDAGAON",
   heroSupporting: "B.Sc. | B.Com. | B.A. | CGPSC | UPSC",
   joinCtaLabel: "JOIN NOW",

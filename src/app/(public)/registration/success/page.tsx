@@ -3,7 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Section } from "@/components/public/section";
 import { formatInrFromPaise } from "@/lib/fees";
-import { additionalPreparationLabel } from "@/lib/catalog";
+import { additionalPreparationLabel, examCenterLabel } from "@/lib/catalog";
 import { safeDb } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +65,7 @@ export default async function RegistrationSuccessPage({
             : "None"}
         </p>
         <p>Category: {registration.category.replace("_", "/")}</p>
+        <p>Exam Centre: {examCenterLabel(registration.examCenter)}</p>
         <p>Fee: {formatInrFromPaise(registration.feePaise)}</p>
         <p>Application status: {registration.status.replaceAll("_", " ")}</p>
         <p>Payment status: {payment?.status || "PENDING"}</p>

@@ -20,6 +20,23 @@ export const ADDITIONAL_PREPARATION_IDS = ADDITIONAL_PREPARATION_OPTIONS.map((it
   ...AdditionalPreparationId[],
 ];
 
+export const EXAM_CENTERS = [
+  { id: "BIJAPUR", label: "Bijapur (बीजापुर)" },
+  { id: "DANTEWADA", label: "Dantewada (दंतेवाड़ा)" },
+  { id: "KONDAGAON", label: "Kondagaon (कोण्डागांव)" },
+  { id: "NARAYANPUR", label: "Narayanpur (नारायणपुर)" },
+  { id: "BASTAR", label: "Bastar (बस्तर)" },
+  { id: "KANKER", label: "Kanker (कांकेर)" },
+] as const;
+
+export type ExamCenterId = (typeof EXAM_CENTERS)[number]["id"];
+
+export const EXAM_CENTER_IDS = EXAM_CENTERS.map((item) => item.id) as [ExamCenterId, ...ExamCenterId[]];
+
+export function examCenterLabel(id: string) {
+  return EXAM_CENTERS.find((item) => item.id === id)?.label ?? id;
+}
+
 export const FALLBACK_NAV: NavLink[] = [
   { id: "home", label: "HOME", href: "/", isActive: true, displayOrder: 1 },
   { id: "about", label: "ABOUT", href: "/about", isActive: true, displayOrder: 2 },

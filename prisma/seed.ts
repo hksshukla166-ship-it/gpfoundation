@@ -26,6 +26,8 @@ const nav = [
 ];
 
 const settingsCopy = {
+  tagline: "गुरु द्रोणाचार्य लक्ष्य उच्च शैक्षणिक संस्थान द्वारा संचालित छत्तीसगढ़ सोसायटी पंजीयन अधिनियम के अधीन पंजीकृत संस्था",
+  heroHeading: "गुरु द्रोणाचार्य लक्ष्य उच्च शैक्षणिक संस्थान द्वारा संचालित छत्तीसगढ़ सोसायटी पंजीयन अधिनियम के अधीन पंजीकृत संस्था",
   footerText: "B.Sc. • B.Com. • B.A. • CGPSC • UPSC • Additional Preparation Classes",
   seoTitle: "GP Foundation Kondagaon | B.Sc., B.Com., B.A. with CGPSC & UPSC",
   seoDescription:
@@ -78,7 +80,7 @@ async function main() {
   if (existingBanner === 0) {
     await prisma.heroBanner.create({
       data: {
-        heading: "अपने लक्ष्य को बनाइए अपनी पहचान",
+        heading: "गुरु द्रोणाचार्य लक्ष्य उच्च शैक्षणिक संस्थान द्वारा संचालित छत्तीसगढ़ सोसायटी पंजीयन अधिनियम के अधीन पंजीकृत संस्था",
         subtitle: "GP FOUNDATION, KONDAGAON",
         supporting: settingsCopy.heroSupporting,
         ctaLabel: "JOIN NOW",
@@ -90,7 +92,7 @@ async function main() {
   } else {
     await prisma.heroBanner.updateMany({
       where: { archived: false },
-      data: { supporting: settingsCopy.heroSupporting },
+      data: { heading: settingsCopy.heroHeading, supporting: settingsCopy.heroSupporting },
     });
   }
 

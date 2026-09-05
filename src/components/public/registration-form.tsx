@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { formatInrFromPaise } from "@/lib/fees";
-import { ADDITIONAL_PREPARATION_OPTIONS } from "@/lib/catalog";
+import { ADDITIONAL_PREPARATION_OPTIONS, EXAM_CENTERS, examCenterLabel } from "@/lib/catalog";
 
 type Category = "ST_SC" | "OBC" | "GENERAL" | "";
+type ExamCenter = (typeof EXAM_CENTERS)[number]["id"] | "";
 
 type MainProgram = { id: string; name: string; slug: string };
 
@@ -20,6 +21,7 @@ export function RegistrationForm({
   razorpayKey: string;
 }) {
   const [category, setCategory] = useState<Category>("");
+  const [examCenter, setExamCenter] = useState<ExamCenter>("");
   const [selectedCourseId, setSelectedCourseId] = useState(course.id);
   const [additional, setAdditional] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +51,10 @@ export function RegistrationForm({
       setError("Please select your category.");
       return;
     }
+    if (!examCenter) {
+      setError("कृपया परीक्षा केंद्र चुनें।");
+      return;
+    }
     if (!razorpayKey) {
       setError("Online payment is not configured yet. Please contact the institute.");
       return;
@@ -58,6 +64,7 @@ export function RegistrationForm({
     const data = new FormData(form);
     data.set("courseId", selectedCourseId);
     data.set("category", category);
+    data.set("examCenter", examCenter);
 
     const photo = data.get("photo");
     const document = data.get("document");
@@ -153,6 +160,26 @@ export function RegistrationForm({
           ))}
         </div>
       </div>
+      <div className="md:col-span-2 rounded border border-navy/20 bg-paper p-4">
+        <p className="font-medium">कृपया अपनी सुविधा के अनुसार एक परीक्षा केंद्र चुनें:</p>
+        <div className="mt-3 flex flex-col gap-2">
+          {EXAM_CENTERS.map((center) => (
+            <label key={center.id} className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="examCenterDisplay"
+                checked={examCenter === center.id}
+                onChange={() => setExamCenter(center.id)}
+                required
+              />
+              {center.label}
+            </label>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-muted">
+          नोट: परीक्षा केंद्र का चयन Registration/Admission Form भरते समय ही करना अनिवार्य होगा।
+        </p>
+      </div>
       <div className="md:col-span-2 rounded border border-gold/40 bg-paper p-4">
         <p className="font-medium">Additional Preparation / Classes (Optional)</p>
         <p className="text-xs text-muted">
@@ -231,6 +258,7 @@ export function RegistrationForm({
             : "None"}
         </p>
         <p>Selected Category: {category ? category.replace("_", "/") : "—"}</p>
+        <p>Exam Centre: {examCenter ? examCenterLabel(examCenter) : "—"}</p>
         <p>Registration Fee: {displayFee != null ? formatInrFromPaise(displayFee) : "Select category"}</p>
         <p className="font-semibold">Total Amount: {displayFee != null ? formatInrFromPaise(displayFee) : "—"}</p>
       </div>

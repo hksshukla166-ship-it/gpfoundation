@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatInrFromPaise } from "@/lib/fees";
-import { additionalPreparationLabel } from "@/lib/catalog";
+import { additionalPreparationLabel, examCenterLabel, EXAM_CENTERS } from "@/lib/catalog";
 
 function query(values: Record<string, string | undefined>) {
   const params = new URLSearchParams();
@@ -14,7 +14,7 @@ function query(values: Record<string, string | undefined>) {
 export default async function RegistrationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; courseId?: string; status?: string; category?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; courseId?: string; status?: string; category?: string; examCenter?: string; page?: string }>;
 }) {
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page || 1));
@@ -23,6 +23,7 @@ export default async function RegistrationsPage({
     ...(sp.courseId ? { courseId: sp.courseId } : {}),
     ...(sp.status ? { status: sp.status as never } : {}),
     ...(sp.category ? { category: sp.category as never } : {}),
+    ...(sp.examCenter ? { examCenter: sp.examCenter as never } : {}),
     ...(sp.q
       ? {
           OR: [
@@ -69,6 +70,14 @@ export default async function RegistrationsPage({
           <option value="OBC">OBC</option>
           <option value="GENERAL">GENERAL</option>
         </select>
+        <select name="examCenter" defaultValue={sp.examCenter} className="border px-2">
+          <option value="">All exam centres</option>
+          {EXAM_CENTERS.map((center) => (
+            <option key={center.id} value={center.id}>
+              {center.label}
+            </option>
+          ))}
+        </select>
         <select name="status" defaultValue={sp.status} className="border px-2">
           <option value="">All statuses</option>
           {["PENDING", "PAYMENT_INITIATED", "PAYMENT_SUCCESSFUL", "PAYMENT_FAILED", "UNDER_REVIEW", "VERIFIED", "CONFIRMED", "REJECTED"].map((s) => (
@@ -87,6 +96,7 @@ export default async function RegistrationsPage({
               <th className="p-2">Main Program</th>
               <th className="p-2">Additional</th>
               <th className="p-2">Category</th>
+              <th className="p-2">Exam Centre</th>
               <th className="p-2">Fee</th>
               <th className="p-2">Payment</th>
               <th className="p-2">Status</th>
@@ -107,6 +117,7 @@ export default async function RegistrationsPage({
                     : "—"}
                 </td>
                 <td className="p-2">{row.category.replace("_", "/")}</td>
+                <td className="p-2">{examCenterLabel(row.examCenter)}</td>
                 <td className="p-2">{formatInrFromPaise(row.feePaise)}</td>
                 <td className="p-2">{row.payments[0]?.status || "—"}</td>
                 <td className="p-2">{row.status.replaceAll("_", " ")}</td>

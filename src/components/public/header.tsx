@@ -19,9 +19,9 @@ export function PublicHeader({ settings, nav }: { settings: Settings; nav: NavIt
 
   return (
     <header className="sticky top-0 z-50 border-b border-gold/30 bg-navy text-white">
-      <div className="hidden md:flex items-center justify-between bg-navy-2 px-6 py-1.5 text-xs tracking-wide text-white/80">
-        <p className="font-display">{settings.tagline}</p>
-        <a href={`tel:${settings.phone.replace(/\s/g, "")}`} className="inline-flex items-center gap-1.5 hover:text-gold-2">
+      <div className="flex items-start justify-between gap-3 bg-navy-2 px-4 py-1.5 text-[11px] leading-snug text-white/80 md:items-center md:px-6">
+        <p className="min-w-0 flex-1 font-display">{settings.tagline}</p>
+        <a href={`tel:${settings.phone.replace(/\s/g, "")}`} className="hidden shrink-0 items-center gap-1.5 hover:text-gold-2 md:inline-flex">
           <Phone className="size-3.5" />
           {settings.phone}
         </a>

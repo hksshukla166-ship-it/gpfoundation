@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatInrFromPaise } from "@/lib/fees";
-import { additionalPreparationLabel } from "@/lib/catalog";
+import { additionalPreparationLabel, examCenterLabel } from "@/lib/catalog";
 import { updateRegistrationStatus } from "../../actions";
 
 export default async function RegistrationDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,6 +35,7 @@ export default async function RegistrationDetailPage({ params }: { params: Promi
             : "None"}
         </p>
         <p>Category: {row.category.replace("_", "/")}</p>
+        <p>Exam Centre: {examCenterLabel(row.examCenter)}</p>
         <p>Fee: {formatInrFromPaise(row.feePaise)}</p>
         {row.photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
