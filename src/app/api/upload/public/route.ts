@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { saveUpload } from "@/lib/upload";
+import { asUploadFile, saveUpload } from "@/lib/upload";
 import { rateLimit } from "@/lib/rate-limit";
+
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") || "local";
@@ -8,11 +10,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Too many uploads." }, { status: 429 });
   }
   const form = await request.formData();
-  const file = form.get("file");
-  if (!(file instanceof File)) {
+  const file = asUploadFile(form.get("file"));
+  if (!file) {
     return NextResponse.json({ error: "No file uploaded." }, { status: 400 });
   }
-  if (!file.type.startsWith("image/")) {
+  const kind = (file.type || "").toLowerCase();
+  const name = (file.name || "").toLowerCase();
+  const isImage = kind.startsWith("image/") || /\.(jpe?g|png|webp|gif|avif|bmp)$/.test(name);
+  if (!isImage) {
     return NextResponse.json({ error: "Only images are allowed." }, { status: 400 });
   }
   try {

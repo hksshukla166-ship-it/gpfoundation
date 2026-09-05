@@ -87,6 +87,7 @@ export async function saveDirector(form: FormData) {
   if (id) await prisma.directorProfile.update({ where: { id }, data });
   else await prisma.directorProfile.create({ data });
   revalidatePath("/");
+  revalidatePath("/admin/director");
 }
 
 export async function saveBanner(form: FormData) {
