@@ -1,0 +1,371 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Category {
+  ST_SC
+  OBC
+  GENERAL
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ApplicationStatus {
+  PENDING
+  PAYMENT_INITIATED
+  PAYMENT_SUCCESSFUL
+  PAYMENT_FAILED
+  UNDER_REVIEW
+  VERIFIED
+  CONFIRMED
+  REJECTED
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  RESOLVED
+  ARCHIVED
+}
+
+enum NoticeType {
+  ADMISSION
+  RECRUITMENT
+  EXAMINATION
+  SCHOLARSHIP
+  CLASS_SCHEDULE
+  TEST_SCHEDULE
+  HOLIDAY
+  IMPORTANT
+}
+
+enum GalleryCategory {
+  CLASSROOM
+  FACULTY
+  STUDENTS
+  PHYSICAL_TRAINING
+  TEST_SERIES
+  SEMINAR
+  EVENTS
+  AWARD
+  OTHER
+}
+
+enum ContentKind {
+  FEATURE
+  WHY_US
+  WRITTEN_SUBJECT
+  PHYSICAL_ITEM
+  TEST_SERIES
+  STUDY_MATERIAL
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  displayName  String?
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model WebsiteSettings {
+  id              String  @id @default("default")
+  instituteName   String  @default("GP FOUNDATION, KONDAGAON")
+  tagline         String  @default("आपका लक्ष्य, हमारी जिम्मेदारी।")
+  phone           String  @default("+91-81030 68959")
+  email           String  @default("foundationgp350@gmail.com")
+  address         String  @default("Kanya Shala Road, Indian Gas Agency के सामने, Deepak Complex, Kondagaon, Chhattisgarh")
+  footerText      String  @default("B.Sc. • B.Com. • B.A. • CGPSC • UPSC • Additional Preparation Classes")
+  facebookUrl     String?
+  instagramUrl    String?
+  youtubeUrl      String?
+  whatsappUrl     String?
+  seoTitle        String  @default("GP Foundation Kondagaon | B.Sc., B.Com., B.A. with CGPSC & UPSC")
+  seoDescription  String  @default("GP Foundation, Kondagaon offers integrated B.Sc., B.Com. and B.A. programs with CGPSC and UPSC preparation, plus optional additional classes.")
+  logoUrl         String?
+  faviconUrl      String?
+  defaultImageUrl String?
+  admissionOpen   Boolean @default(true)
+  maintenanceMode Boolean @default(false)
+  heroHeading     String  @default("अपने लक्ष्य को बनाइए अपनी पहचान")
+  heroSubheading  String  @default("GP FOUNDATION, KONDAGAON")
+  heroSupporting  String  @default("B.Sc. | B.Com. | B.A. | CGPSC | UPSC")
+  joinCtaLabel    String  @default("JOIN NOW")
+  joinCtaHref     String  @default("/admission")
+  enquireCtaLabel String  @default("ENQUIRE NOW")
+  enquireCtaHref  String  @default("/contact")
+  welcomeHeading  String  @default("Welcome to GP Foundation, Kondagaon")
+  welcomeBody     String  @default("GP Foundation, Kondagaon विद्यार्थियों को विभिन्न सरकारी भर्ती एवं प्रतियोगी परीक्षाओं की तैयारी के लिए गुणवत्तापूर्ण शिक्षा, उचित मार्गदर्शन और शारीरिक प्रशिक्षण उपलब्ध कराने के उद्देश्य से कार्य करता है।")
+  welcomeExtra    String  @default("हमारा प्रयास है कि प्रत्येक विद्यार्थी को सही दिशा, बेहतर अध्ययन सामग्री, नियमित अभ्यास और परीक्षा-केंद्रित तैयारी प्राप्त हो।")
+  aboutHeading    String  @default("हमारे बारे में")
+  aboutBody       String  @default("GP Foundation, Kondagaon का उद्देश्य युवाओं एवं विद्यार्थियों को विभिन्न सरकारी सेवाओं और प्रतियोगी परीक्षाओं के लिए व्यवस्थित एवं गुणवत्तापूर्ण तैयारी उपलब्ध कराना है।")
+  aboutFocus      String  @default("B.Sc. / B.Com. / B.A. + CGPSC + UPSC · Additional Classes आवश्यकता अनुसार")
+  aboutObjective  String  @default("युवाओं को सरकारी सेवा के लक्ष्य तक पहुँचने के लिए सही मार्गदर्शन और बेहतर तैयारी का अवसर देना।")
+  scholarshipTitle String @default("GP Foundation Scholarship")
+  scholarshipBody  String @default("मेधावी एवं योग्य विद्यार्थियों के लिए संस्थान द्वारा निर्धारित नियमों एवं पात्रता के अनुसार Scholarship अवसर उपलब्ध कराया जा सकता है।")
+  scholarshipProcess String @default("Registration → Scholarship Test / Eligibility → Result → Scholarship")
+  physicalHeading String  @default("नियमित अभ्यास एवं अनुशासन")
+  physicalNote    String  @default("Additional subject classes and special batches are offered as per student requirement.")
+  writtenHeading  String  @default("Special Written Preparation")
+  feeStScPaise    Int     @default(100000)
+  feeObcPaise     Int     @default(125000)
+  feeGeneralPaise Int     @default(135000)
+  updatedAt       DateTime @updatedAt
+}
+
+model HeroBanner {
+  id           String   @id @default(cuid())
+  heading      String?
+  subtitle     String?
+  supporting   String?
+  imageUrl     String?
+  ctaLabel     String?
+  ctaHref      String?
+  isActive     Boolean  @default(true)
+  archived     Boolean  @default(false)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive, archived, displayOrder])
+}
+
+model DirectorProfile {
+  id           String   @id @default(cuid())
+  name         String?
+  designation  String   @default("Director, GP Foundation, Kondagaon")
+  photoUrl     String?
+  shortBio     String?
+  message      String?
+  isActive     Boolean  @default(false)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive, displayOrder])
+}
+
+model Course {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  shortDescription String
+  fullDescription String   @db.Text
+  imageUrl        String?
+  duration        String?
+  batchInfo       String?
+  categoryLabel   String?
+  subjects        String[] @default([])
+  feeStScPaise    Int?
+  feeObcPaise     Int?
+  feeGeneralPaise Int?
+  admissionOpen   Boolean  @default(true)
+  registrationOpen Boolean @default(true)
+  isActive        Boolean  @default(true)
+  archived        Boolean  @default(false)
+  displayOrder    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  registrations   CourseRegistration[]
+
+  @@index([isActive, archived, displayOrder])
+  @@index([slug])
+}
+
+model CourseRegistration {
+  id              String            @id @default(cuid())
+  applicationId   String            @unique
+  applicant       Applicant         @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  applicantId     String
+  course          Course            @relation(fields: [courseId], references: [id])
+  courseId        String
+  category        Category
+  feePaise        Int
+  status          ApplicationStatus @default(PENDING)
+  photoUrl        String?
+  documentUrl     String?
+  additionalPreparations String[] @default([])
+  adminNotes      String?
+  verifiedAt      DateTime?
+  confirmedAt     DateTime?
+  rejectedAt      DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  payments        Payment[]
+
+  @@index([status, createdAt])
+  @@index([courseId])
+  @@index([category])
+  @@index([applicationId])
+}
+
+model Applicant {
+  id              String               @id @default(cuid())
+  fullName        String
+  fatherName      String
+  motherName      String
+  mobile          String
+  email           String?
+  dateOfBirth     DateTime
+  gender          Gender
+  address         String
+  district        String
+  state           String
+  qualification   String
+  schoolCollege   String?
+  /// Reserved for a future Student Portal. Not used in the current public/admin product.
+  futureStudentId String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  registrations   CourseRegistration[]
+
+  @@index([mobile])
+  @@index([fullName])
+}
+
+model Payment {
+  id               String             @id @default(cuid())
+  registration     CourseRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId   String
+  applicantId      String
+  courseId         String
+  category         Category
+  amountPaise      Int
+  currency         String             @default("INR")
+  razorpayOrderId  String             @unique
+  razorpayPaymentId String?
+  razorpaySignature String?
+  status           PaymentStatus      @default(CREATED)
+  paidAt           DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([status])
+  @@index([applicantId])
+  @@index([courseId])
+  @@index([createdAt])
+}
+
+model ApplicationSequence {
+  year       Int @id
+  lastNumber Int @default(0)
+}
+
+model Faculty {
+  id           String   @id @default(cuid())
+  name         String
+  qualification String?
+  subject      String?
+  experience   String?
+  photoUrl     String?
+  biography    String?
+  isActive     Boolean  @default(true)
+  archived     Boolean  @default(false)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isActive, archived, displayOrder])
+}
+
+model Notice {
+  id           String     @id @default(cuid())
+  title        String
+  slug         String     @unique
+  type         NoticeType @default(IMPORTANT)
+  excerpt      String?
+  body         String     @db.Text
+  published    Boolean    @default(false)
+  pinned       Boolean    @default(false)
+  archived     Boolean    @default(false)
+  publishAt    DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([published, archived, pinned, createdAt])
+  @@index([slug])
+}
+
+model GalleryItem {
+  id           String          @id @default(cuid())
+  title        String?
+  mediaUrl     String
+  mediaType    String          @default("IMAGE")
+  category     GalleryCategory @default(OTHER)
+  isActive     Boolean         @default(true)
+  archived     Boolean         @default(false)
+  displayOrder Int             @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([isActive, archived, category, displayOrder])
+}
+
+model Scholarship {
+  id           String   @id @default(cuid())
+  title        String
+  body         String   @db.Text
+  process      String?
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Enquiry {
+  id               String        @id @default(cuid())
+  name             String
+  mobile           String
+  email            String?
+  interestedProgram String?
+  message          String        @db.Text
+  status           EnquiryStatus @default(NEW)
+  archived         Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([status, archived, createdAt])
+  @@index([mobile])
+}
+
+model ContentBlock {
+  id           String      @id @default(cuid())
+  kind         ContentKind
+  title        String
+  description  String?
+  icon         String?
+  isActive     Boolean     @default(true)
+  displayOrder Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([kind, isActive, displayOrder])
+}
+
+model NavLink {
+  id           String   @id @default(cuid())
+  label        String
+  href         String
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0)
+}
