@@ -1,8 +1,7 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { randomUUID } from "crypto";
+import { prisma } from "@/lib/prisma";
 
-const MAX_BYTES = 15 * 1024 * 1024;
+const MAX_BYTES = 4 * 1024 * 1024;
 
 const EXT_BY_MIME: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -29,8 +28,6 @@ const MIME_BY_EXT: Record<string, string> = {
   mp4: "video/mp4",
   webm: "video/webm",
 };
-
-export const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
 
 export type UploadFile = {
   name: string;
@@ -69,26 +66,30 @@ export function resolveUploadKind(file: UploadFile) {
   return { ext, mime: MIME_BY_EXT[ext] || mime };
 }
 
-export function safeUploadPath(segments: string[]) {
-  if (!segments.length || segments.some((part) => !part || part === "." || part === ".." || /[\\/]/.test(part))) {
-    return null;
-  }
-  const resolved = path.resolve(UPLOAD_ROOT, ...segments);
-  const root = path.resolve(UPLOAD_ROOT);
-  if (resolved !== root && !resolved.startsWith(root + path.sep)) return null;
-  return resolved;
+export function parseUploadKey(segments: string[]) {
+  if (segments.length !== 2) return null;
+  const [folder, filename] = segments;
+  if (!folder || !filename) return null;
+  if (!/^[\w-]+$/.test(folder)) return null;
+  if (!/^[\w.-]+$/.test(filename)) return null;
+  return { folder, filename };
 }
 
 export async function saveUpload(file: UploadFile, folder: string) {
   if (file.size > MAX_BYTES) {
-    throw new Error("File is too large. Maximum size is 15 MB.");
+    throw new Error("File is too large. Please upload a JPG/PNG under 4 MB.");
   }
-  const { ext } = resolveUploadKind(file);
+  const { ext, mime } = resolveUploadKind(file);
   const safeFolder = folder.replace(/[^\w-]/g, "") || "general";
-  const dir = path.join(UPLOAD_ROOT, safeFolder);
-  await mkdir(dir, { recursive: true });
-  const name = `${randomUUID()}.${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(dir, name), buffer);
-  return `/uploads/${safeFolder}/${name}`;
+  const filename = `${randomUUID()}.${ext}`;
+  const data = Buffer.from(await file.arrayBuffer());
+  await prisma.mediaFile.create({
+    data: {
+      folder: safeFolder,
+      filename,
+      mimeType: mime,
+      data,
+    },
+  });
+  return `/uploads/${safeFolder}/${filename}`;
 }

@@ -3,6 +3,7 @@ import { asUploadFile, saveUpload } from "@/lib/upload";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") || "local";

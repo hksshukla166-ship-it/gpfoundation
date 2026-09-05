@@ -3,6 +3,7 @@ import { requireAdminApi, jsonError } from "@/lib/api";
 import { asUploadFile, saveUpload } from "@/lib/upload";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const { error } = await requireAdminApi();

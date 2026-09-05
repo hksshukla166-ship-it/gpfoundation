@@ -34,7 +34,7 @@ export function ImageField({ name, defaultValue, folder }: { name: string; defau
       <input
         type="file"
         form="gp-file-sink"
-        accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/bmp,.jpg,.jpeg,.png,.webp,.gif,.avif,.bmp,video/mp4,video/webm"
+        accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
         onChange={(e) => {
           const selected = e.target.files?.[0];
           e.target.value = "";
@@ -44,7 +44,7 @@ export function ImageField({ name, defaultValue, folder }: { name: string; defau
       {busy ? <p className="text-xs text-navy">Uploading… please wait, then click Save.</p> : null}
       {error ? <p className="text-sm text-red-700">{error}</p> : null}
       {url && !busy ? (
-        <p className="text-xs text-muted">Image uploaded. Click Save to show it on the website.</p>
+        <p className="text-xs text-muted">Image uploaded. Click Save to show it on the website. Use a JPG/PNG under 4 MB.</p>
       ) : null}
       {url ? (
         // eslint-disable-next-line @next/next/no-img-element

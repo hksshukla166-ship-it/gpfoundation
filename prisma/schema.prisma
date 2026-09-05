@@ -369,3 +369,15 @@ model NavLink {
   isActive     Boolean  @default(true)
   displayOrder Int      @default(0)
 }
+
+model MediaFile {
+  id        String   @id @default(cuid())
+  folder    String
+  filename  String
+  mimeType  String
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@unique([folder, filename])
+  @@index([folder])
+}
