@@ -52,7 +52,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <Hero settings={settings} banners={banners} director={director} />
+      <Hero settings={settings} banners={banners} />
 
       <Section eyebrow="WELCOME" title={settings.welcomeHeading}>
         <div className="grid gap-10 md:grid-cols-[1.2fr_0.8fr]">
