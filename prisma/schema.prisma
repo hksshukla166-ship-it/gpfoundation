@@ -212,10 +212,17 @@ model CourseRegistration {
   examCenter      ExamCenter        @default(KONDAGAON)
   feePaise        Int
   status          ApplicationStatus @default(PENDING)
+  postalAddress   String?
+  enrolledCourseName String?
+  studentName     String?
   photoUrl        String?
   documentUrl     String?
   additionalPreparations String[] @default([])
   adminNotes      String?
+  receiptToken    String?           @unique
+  receiptFilename String?
+  receiptDownloadedAt DateTime?
+  piiClearedAt    DateTime?
   verifiedAt      DateTime?
   confirmedAt     DateTime?
   rejectedAt      DateTime?

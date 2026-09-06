@@ -8,6 +8,7 @@ import { nextApplicationId } from "@/lib/application-id";
 import { getRazorpay } from "@/lib/razorpay";
 import { rateLimit } from "@/lib/rate-limit";
 import { isNeonConfigured } from "@/lib/settings";
+import { formatPostalAddress } from "@/lib/receipt";
 
 export async function POST(request: NextRequest) {
   if (!isNeonConfigured()) {
@@ -82,6 +83,13 @@ export async function POST(request: NextRequest) {
       examCenter: parsed.data.examCenter,
       feePaise: amount,
       status: "PAYMENT_INITIATED",
+      postalAddress: formatPostalAddress({
+        address: parsed.data.address,
+        district: parsed.data.district,
+        state: parsed.data.state,
+      }),
+      enrolledCourseName: course.name,
+      studentName: parsed.data.fullName,
       photoUrl: parsed.data.photoUrl || null,
       documentUrl: parsed.data.documentUrl || null,
       additionalPreparations: parsed.data.additionalPreparations,

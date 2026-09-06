@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyRazorpaySignature } from "@/lib/razorpay";
+import { finalizePaidRegistration } from "@/lib/receipt";
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
         razorpayPaymentId: paymentId,
         razorpaySignature: signature,
         status: "SUCCESS",
-        paidAt: new Date(),
+        paidAt: payment.paidAt ?? new Date(),
       },
     }),
     prisma.courseRegistration.update({
@@ -35,6 +36,11 @@ export async function POST(request: NextRequest) {
     }),
   ]);
 
+  try {
+    await finalizePaidRegistration(payment.registrationId);
+  } catch {
+    // Receipt may already have been created by the Razorpay webhook.
+  }
   const registration = await prisma.courseRegistration.findUnique({ where: { id: payment.registrationId } });
   return NextResponse.json({ applicationId: registration?.applicationId });
 }

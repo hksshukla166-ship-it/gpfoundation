@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyWebhookSignature } from "@/lib/razorpay";
+import { finalizePaidRegistration } from "@/lib/receipt";
 
 export async function POST(request: NextRequest) {
   const raw = await request.text();
@@ -31,6 +32,11 @@ export async function POST(request: NextRequest) {
         data: { status: "PAYMENT_SUCCESSFUL" },
       }),
     ]);
+    try {
+      await finalizePaidRegistration(payment.registrationId);
+    } catch {
+      // Receipt may already have been created by the verify endpoint.
+    }
   }
   if (event.event === "payment.failed") {
     await prisma.$transaction([

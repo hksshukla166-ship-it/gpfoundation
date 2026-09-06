@@ -1,36 +1,47 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { additionalPreparationLabel, examCenterLabel } from "@/lib/catalog";
+import { CATEGORY_LABELS } from "@/lib/fees";
+import { examCenterLabel } from "@/lib/catalog";
+import { formatPostalAddress } from "@/lib/receipt";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const rows = await prisma.courseRegistration.findMany({
-    include: { applicant: true, course: true, payments: { take: 1, orderBy: { createdAt: "desc" } } },
+    include: { course: true, applicant: { select: { fullName: true, address: true, district: true, state: true } } },
     orderBy: { createdAt: "desc" },
     take: 5000,
   });
-  const header = ["Application ID", "Name", "Mobile", "Course", "Additional Classes", "Category", "Exam Centre", "Fee Paise", "Payment", "Status", "Date"];
+  const header = [
+    "Registration Number",
+    "Name",
+    "Address",
+    "Enrolled Course",
+    "Examination Centre",
+    "Caste",
+    "Amount Paid (INR)",
+    "Date",
+  ];
   const csv = [
     header.join(","),
-    ...rows.map((r) =>
-      [
+    ...rows.map((r) => {
+      const name =
+        (r.studentName && r.studentName !== "[REDACTED]" && r.studentName) ||
+        (r.applicant.fullName !== "[REDACTED]" ? r.applicant.fullName : "");
+      return [
         r.applicationId,
-        r.applicant.fullName,
-        r.applicant.mobile,
-        r.course.name,
-        r.additionalPreparations.map((id) => additionalPreparationLabel(id)).join("; "),
-        r.category,
+        name,
+        r.postalAddress || formatPostalAddress(r.applicant),
+        r.enrolledCourseName || r.course.name,
         examCenterLabel(r.examCenter),
-        r.feePaise,
-        r.payments[0]?.status || "",
-        r.status,
+        CATEGORY_LABELS[r.category],
+        (r.feePaise / 100).toFixed(0),
         r.createdAt.toISOString(),
       ]
         .map((v) => `"${String(v).replaceAll('"', '""')}"`)
-        .join(","),
-    ),
+        .join(",");
+    }),
   ].join("\n");
   return new NextResponse(csv, {
     headers: {

@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Section } from "@/components/public/section";
-import { formatInrFromPaise } from "@/lib/fees";
-import { additionalPreparationLabel, examCenterLabel } from "@/lib/catalog";
+import { CATEGORY_LABELS, formatInrFromPaise } from "@/lib/fees";
+import { examCenterLabel } from "@/lib/catalog";
 import { safeDb } from "@/lib/settings";
+import { DownloadReceiptButton } from "@/components/public/download-receipt";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Registration Status" };
@@ -52,25 +53,32 @@ export default async function RegistrationSuccessPage({
   }
 
   const payment = registration.payments[0];
+  const paid = registration.status === "PAYMENT_SUCCESSFUL" || payment?.status === "SUCCESS";
+  const courseName = registration.enrolledCourseName || registration.course.name;
+  const address = registration.postalAddress || "—";
 
   return (
-    <Section eyebrow="CONFIRMATION" title="Registration successful">
+    <Section eyebrow="CONFIRMATION" title={paid ? "Registration successful" : "Registration received"}>
       <div className="max-w-xl space-y-3 border border-line bg-white p-6">
-        <p>Application ID: <strong>{registration.applicationId}</strong></p>
-        <p>Main Program: {registration.course.name}</p>
         <p>
-          Additional Classes:{" "}
-          {registration.additionalPreparations.length
-            ? registration.additionalPreparations.map((id) => additionalPreparationLabel(id)).join(", ")
-            : "None"}
+          Registration number: <strong className="tracking-wide">{registration.applicationId}</strong>
         </p>
-        <p>Category: {registration.category.replace("_", "/")}</p>
-        <p>Exam Centre: {examCenterLabel(registration.examCenter)}</p>
-        <p>Fee: {formatInrFromPaise(registration.feePaise)}</p>
-        <p>Application status: {registration.status.replaceAll("_", " ")}</p>
+        {registration.studentName ? <p>Name: {registration.studentName}</p> : null}
+        <p>Enrolled course: {courseName}</p>
+        <p>Examination centre: {examCenterLabel(registration.examCenter)}</p>
+        <p>Caste / category: {CATEGORY_LABELS[registration.category]}</p>
+        <p>Address: {address}</p>
+        <p>Amount paid: {formatInrFromPaise(registration.feePaise)}</p>
         <p>Payment status: {payment?.status || "PENDING"}</p>
       </div>
-      <p className="mt-6 text-sm text-muted">Please save your Application ID for future reference.</p>
+      {paid && registration.receiptToken ? <DownloadReceiptButton token={registration.receiptToken} /> : null}
+      {paid && !registration.receiptToken && registration.receiptDownloadedAt ? (
+        <p className="mt-6 text-sm text-muted">
+          The receipt has already been downloaded and deleted from the website server. Keep your registration number{" "}
+          <strong>{registration.applicationId}</strong>.
+        </p>
+      ) : null}
+      <p className="mt-6 text-sm text-muted">Please save your registration number for all future correspondence with GP Foundation.</p>
     </Section>
   );
 }

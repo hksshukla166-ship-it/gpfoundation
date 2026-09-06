@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatInrFromPaise } from "@/lib/fees";
-import { additionalPreparationLabel, examCenterLabel, EXAM_CENTERS } from "@/lib/catalog";
+import { CATEGORY_LABELS, formatInrFromPaise } from "@/lib/fees";
+import { examCenterLabel, EXAM_CENTERS } from "@/lib/catalog";
+import { formatPostalAddress } from "@/lib/receipt";
 
 function query(values: Record<string, string | undefined>) {
   const params = new URLSearchParams();
@@ -9,6 +10,12 @@ function query(values: Record<string, string | undefined>) {
     if (value) params.set(key, value);
   }
   return params.toString();
+}
+
+function studentNameOf(row: { studentName: string | null; applicant: { fullName: string } }) {
+  if (row.studentName && row.studentName !== "[REDACTED]") return row.studentName;
+  if (row.applicant.fullName && row.applicant.fullName !== "[REDACTED]") return row.applicant.fullName;
+  return "—";
 }
 
 export default async function RegistrationsPage({
@@ -28,8 +35,10 @@ export default async function RegistrationsPage({
       ? {
           OR: [
             { applicationId: { contains: sp.q, mode: "insensitive" as const } },
+            { studentName: { contains: sp.q, mode: "insensitive" as const } },
+            { postalAddress: { contains: sp.q, mode: "insensitive" as const } },
+            { enrolledCourseName: { contains: sp.q, mode: "insensitive" as const } },
             { applicant: { fullName: { contains: sp.q, mode: "insensitive" as const } } },
-            { applicant: { mobile: { contains: sp.q } } },
           ],
         }
       : {}),
@@ -37,7 +46,7 @@ export default async function RegistrationsPage({
   const [items, total, courses] = await Promise.all([
     prisma.courseRegistration.findMany({
       where,
-      include: { applicant: true, course: true, payments: { orderBy: { createdAt: "desc" }, take: 1 } },
+      include: { course: true, applicant: { select: { fullName: true, address: true, district: true, state: true } } },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * take,
       take,
@@ -54,8 +63,12 @@ export default async function RegistrationsPage({
           EXPORT CSV
         </a>
       </div>
+      <p className="mt-2 max-w-3xl text-sm text-muted">
+        Admin records keep registration number, name, address, enrolled course, examination centre, caste, and amount
+        paid. Student receipts are deleted from the server once downloaded.
+      </p>
       <form className="my-4 flex flex-wrap gap-2">
-        <input name="q" defaultValue={sp.q} placeholder="Name, mobile, Application ID" className="border px-3 py-2" />
+        <input name="q" defaultValue={sp.q} placeholder="Registration number, name, address, course" className="border px-3 py-2" />
         <select name="courseId" defaultValue={sp.courseId} className="border px-2">
           <option value="">All courses</option>
           {courses.map((c) => (
@@ -87,19 +100,16 @@ export default async function RegistrationsPage({
         <button className="border px-3">Filter</button>
       </form>
       <div className="overflow-x-auto bg-white">
-        <table className="w-full min-w-[900px] text-sm">
+        <table className="w-full min-w-[960px] text-sm">
           <thead className="bg-navy text-white">
             <tr>
-              <th className="p-2 text-left">Application ID</th>
-              <th className="p-2 text-left">Applicant</th>
-              <th className="p-2">Mobile</th>
-              <th className="p-2">Main Program</th>
-              <th className="p-2">Additional</th>
-              <th className="p-2">Category</th>
-              <th className="p-2">Exam Centre</th>
-              <th className="p-2">Fee</th>
-              <th className="p-2">Payment</th>
-              <th className="p-2">Status</th>
+              <th className="p-2 text-left">Registration No.</th>
+              <th className="p-2 text-left">Name</th>
+              <th className="p-2 text-left">Address</th>
+              <th className="p-2">Enrolled course</th>
+              <th className="p-2">Exam centre</th>
+              <th className="p-2">Caste</th>
+              <th className="p-2">Amount paid</th>
               <th className="p-2">Date</th>
               <th className="p-2">Actions</th>
             </tr>
@@ -108,19 +118,12 @@ export default async function RegistrationsPage({
             {items.map((row) => (
               <tr key={row.id} className="border-t">
                 <td className="p-2 font-medium">{row.applicationId}</td>
-                <td className="p-2">{row.applicant.fullName}</td>
-                <td className="p-2">{row.applicant.mobile}</td>
-                <td className="p-2">{row.course.name}</td>
-                <td className="p-2">
-                  {row.additionalPreparations.length
-                    ? row.additionalPreparations.map((id) => additionalPreparationLabel(id)).join(", ")
-                    : "—"}
-                </td>
-                <td className="p-2">{row.category.replace("_", "/")}</td>
+                <td className="p-2">{studentNameOf(row)}</td>
+                <td className="p-2">{row.postalAddress || formatPostalAddress(row.applicant)}</td>
+                <td className="p-2">{row.enrolledCourseName || row.course.name}</td>
                 <td className="p-2">{examCenterLabel(row.examCenter)}</td>
+                <td className="p-2">{CATEGORY_LABELS[row.category]}</td>
                 <td className="p-2">{formatInrFromPaise(row.feePaise)}</td>
-                <td className="p-2">{row.payments[0]?.status || "—"}</td>
-                <td className="p-2">{row.status.replaceAll("_", " ")}</td>
                 <td className="p-2">{row.createdAt.toLocaleDateString("en-IN")}</td>
                 <td className="p-2">
                   <Link className="underline" href={`/admin/registrations/${row.id}`}>

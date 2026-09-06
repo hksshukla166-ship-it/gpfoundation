@@ -354,8 +354,10 @@ export async function searchRegistrations(args: {
       ? {
           OR: [
             { applicationId: { contains: args.q, mode: "insensitive" } },
+            { studentName: { contains: args.q, mode: "insensitive" } },
+            { postalAddress: { contains: args.q, mode: "insensitive" } },
+            { enrolledCourseName: { contains: args.q, mode: "insensitive" } },
             { applicant: { fullName: { contains: args.q, mode: "insensitive" } } },
-            { applicant: { mobile: { contains: args.q } } },
           ],
         }
       : {}),
@@ -364,7 +366,7 @@ export async function searchRegistrations(args: {
   const [items, total] = await Promise.all([
     prisma.courseRegistration.findMany({
       where,
-      include: { applicant: true, course: true, payments: { orderBy: { createdAt: "desc" }, take: 1 } },
+      include: { course: true, payments: { orderBy: { createdAt: "desc" }, take: 1 } },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * take,
       take,
