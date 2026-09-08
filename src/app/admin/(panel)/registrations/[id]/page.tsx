@@ -1,39 +1,63 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { CATEGORY_LABELS, formatInrFromPaise } from "@/lib/fees";
+import { formatInrFromPaise } from "@/lib/fees";
 import { examCenterLabel } from "@/lib/catalog";
 import { formatPostalAddress } from "@/lib/receipt";
+import { paymentModeLabel, paymentStatusLabel, registrationPaymentLabel } from "@/lib/payment-status";
 import { updateRegistrationStatus } from "../../actions";
 
 export default async function RegistrationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const row = await prisma.courseRegistration.findUnique({
     where: { id },
-    include: { course: true, applicant: { select: { fullName: true, address: true, district: true, state: true } } },
+    include: {
+      course: true,
+      applicant: true,
+      payments: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
   });
   if (!row) notFound();
 
-  const name =
-    (row.studentName && row.studentName !== "[REDACTED]" && row.studentName) ||
-    (row.applicant.fullName !== "[REDACTED]" ? row.applicant.fullName : "—");
+  const name = row.studentName || row.applicant.fullName;
+  const payment = row.payments[0];
+  const paid = row.status === "PAYMENT_SUCCESSFUL" || payment?.status === "SUCCESS";
 
   return (
     <div className="max-w-3xl space-y-6">
       <h1 className="font-display text-3xl">{row.applicationId}</h1>
       <div className="grid gap-2 bg-white p-5 text-sm">
+        {row.photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={row.photoUrl} alt={name} className="h-36 w-28 object-cover border" />
+        ) : null}
         <p>
-          Registration number: <strong>{row.applicationId}</strong>
+          Enrollment / Student ID: <strong>{row.applicationId}</strong>
         </p>
-        <p>Name: {name}</p>
-        <p>Address: {row.postalAddress || formatPostalAddress(row.applicant)}</p>
-        <p>Enrolled course: {row.enrolledCourseName || row.course.name}</p>
-        <p>Examination centre: {examCenterLabel(row.examCenter)}</p>
-        <p>Caste: {CATEGORY_LABELS[row.category]}</p>
-        <p>Amount paid: {formatInrFromPaise(row.feePaise)}</p>
-        {row.receiptDownloadedAt ? (
-          <p className="text-muted">Student receipt downloaded and deleted from the server on {row.receiptDownloadedAt.toLocaleString("en-IN")}.</p>
-        ) : row.receiptToken ? (
-          <p className="text-muted">Student receipt is waiting to be downloaded; it will be deleted from the server after download.</p>
+        {row.receiptNumber ? (
+          <p>
+            Receipt Number: <strong>{row.receiptNumber}</strong>
+          </p>
+        ) : null}
+        <p>विद्यार्थी का नाम: {name}</p>
+        <p>मोबाइल: {row.studentMobile || row.applicant.mobile}</p>
+        <p>अभिभावक: {row.guardianName || row.applicant.guardianName || row.applicant.fatherName}</p>
+        <p>कोर्स: {row.enrolledCourseName || row.course.name}</p>
+        <p>बैच/कक्षा: {row.batchOrClass || "—"}</p>
+        <p>परीक्षा केंद्र: {examCenterLabel(row.examCenter)}</p>
+        <p>पता: {row.postalAddress || formatPostalAddress(row.applicant)}</p>
+        <p>Amount: {formatInrFromPaise(row.feePaise)}</p>
+        <p>Payment Status: {paid ? "Successful" : registrationPaymentLabel(row.status)}</p>
+        {payment ? (
+          <>
+            <p>Payment record: {paymentStatusLabel(payment.status)}</p>
+            <p>Payment Mode: {paymentModeLabel(payment.paymentMode)}</p>
+            <p>Date & time: {(payment.paidAt || payment.createdAt).toLocaleString("en-IN")}</p>
+          </>
+        ) : null}
+        {row.receiptToken ? (
+          <a className="underline" href={`/api/registration/receipt/${row.receiptToken}`}>
+            Download receipt
+          </a>
         ) : null}
       </div>
       <form action={updateRegistrationStatus} className="space-y-3 bg-white p-5">

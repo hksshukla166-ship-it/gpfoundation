@@ -215,6 +215,10 @@ model CourseRegistration {
   postalAddress   String?
   enrolledCourseName String?
   studentName     String?
+  guardianName    String?
+  batchOrClass    String?
+  studentMobile   String?
+  receiptNumber   String?           @unique
   photoUrl        String?
   documentUrl     String?
   additionalPreparations String[] @default([])
@@ -242,6 +246,7 @@ model Applicant {
   fullName        String
   fatherName      String
   motherName      String
+  guardianName    String            @default("")
   mobile          String
   email           String?
   dateOfBirth     DateTime
@@ -273,7 +278,8 @@ model Payment {
   razorpayOrderId  String             @unique
   razorpayPaymentId String?
   razorpaySignature String?
-  status           PaymentStatus      @default(CREATED)
+  paymentMode      String?
+  status           PaymentStatus      @default(PENDING)
   paidAt           DateTime?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt

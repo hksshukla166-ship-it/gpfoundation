@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Section } from "@/components/public/section";
-import { CATEGORY_LABELS, formatInrFromPaise } from "@/lib/fees";
+import { formatInrFromPaise } from "@/lib/fees";
 import { examCenterLabel } from "@/lib/catalog";
 import { safeDb } from "@/lib/settings";
-import { DownloadReceiptButton } from "@/components/public/download-receipt";
+import { DownloadReceiptButton, PaymentStatusPoller } from "@/components/public/download-receipt";
+import { paymentStatusLabel } from "@/lib/payment-status";
+import { reconcileRegistrationByApplicationId } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Registration Status" };
@@ -16,7 +18,7 @@ export default async function RegistrationSuccessPage({
   searchParams: Promise<{ applicationId?: string; status?: string; reason?: string }>;
 }) {
   const { applicationId, status, reason } = await searchParams;
-  if (status === "failed") {
+  if (status === "failed" && !applicationId) {
     return (
       <Section title="Payment failed">
         <p className="text-muted">{reason || "The payment could not be completed. You can try again from the course page."}</p>
@@ -35,11 +37,13 @@ export default async function RegistrationSuccessPage({
     );
   }
 
+  await reconcileRegistrationByApplicationId(applicationId).catch(() => null);
+
   const registration = await safeDb(
     () =>
       prisma.courseRegistration.findUnique({
         where: { applicationId },
-        include: { course: true, payments: { orderBy: { createdAt: "desc" }, take: 1 } },
+        include: { course: true, payments: { orderBy: { createdAt: "desc" }, take: 1 }, applicant: true },
       }),
     null,
   );
@@ -55,30 +59,33 @@ export default async function RegistrationSuccessPage({
   const payment = registration.payments[0];
   const paid = registration.status === "PAYMENT_SUCCESSFUL" || payment?.status === "SUCCESS";
   const courseName = registration.enrolledCourseName || registration.course.name;
-  const address = registration.postalAddress || "—";
+  const statusLabel = paid ? "Successful" : paymentStatusLabel(payment?.status);
 
   return (
-    <Section eyebrow="CONFIRMATION" title={paid ? "Registration successful" : "Registration received"}>
+    <Section eyebrow="CONFIRMATION" title={paid ? "Registration successful" : "Payment pending"}>
       <div className="max-w-xl space-y-3 border border-line bg-white p-6">
         <p>
-          Registration number: <strong className="tracking-wide">{registration.applicationId}</strong>
+          Enrollment / Student ID: <strong className="tracking-wide">{registration.applicationId}</strong>
         </p>
-        {registration.studentName ? <p>Name: {registration.studentName}</p> : null}
-        <p>Enrolled course: {courseName}</p>
-        <p>Examination centre: {examCenterLabel(registration.examCenter)}</p>
-        <p>Caste / category: {CATEGORY_LABELS[registration.category]}</p>
-        <p>Address: {address}</p>
+        {registration.receiptNumber ? (
+          <p>
+            Receipt Number: <strong>{registration.receiptNumber}</strong>
+          </p>
+        ) : null}
+        {registration.studentName ? <p>विद्यार्थी का नाम: {registration.studentName}</p> : null}
+        {registration.studentMobile ? <p>मोबाइल: {registration.studentMobile}</p> : null}
+        {registration.guardianName ? <p>अभिभावक: {registration.guardianName}</p> : null}
+        <p>कोर्स: {courseName}</p>
+        {registration.batchOrClass ? <p>बैच/कक्षा: {registration.batchOrClass}</p> : null}
+        <p>परीक्षा केंद्र: {examCenterLabel(registration.examCenter)}</p>
         <p>Amount paid: {formatInrFromPaise(registration.feePaise)}</p>
-        <p>Payment status: {payment?.status || "PENDING"}</p>
-      </div>
-      {paid && registration.receiptToken ? <DownloadReceiptButton token={registration.receiptToken} /> : null}
-      {paid && !registration.receiptToken && registration.receiptDownloadedAt ? (
-        <p className="mt-6 text-sm text-muted">
-          The receipt has already been downloaded and deleted from the website server. Keep your registration number{" "}
-          <strong>{registration.applicationId}</strong>.
+        <p>
+          Payment Status: <strong>{paid ? "PAID / SUCCESS" : statusLabel}</strong>
         </p>
-      ) : null}
-      <p className="mt-6 text-sm text-muted">Please save your registration number for all future correspondence with GP Foundation.</p>
+      </div>
+      {paid && registration.receiptToken ? <DownloadReceiptButton token={registration.receiptToken} autoStart /> : null}
+      {!paid ? <PaymentStatusPoller applicationId={registration.applicationId} /> : null}
+      <p className="mt-6 text-sm text-muted">Please save your enrollment number for all future correspondence with GP Foundation.</p>
     </Section>
   );
 }

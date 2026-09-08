@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { CATEGORY_LABELS, formatInrFromPaise } from "@/lib/fees";
+import { formatInrFromPaise } from "@/lib/fees";
 import { examCenterLabel, EXAM_CENTERS } from "@/lib/catalog";
-import { formatPostalAddress } from "@/lib/receipt";
+import { registrationPaymentLabel } from "@/lib/payment-status";
 
 function query(values: Record<string, string | undefined>) {
   const params = new URLSearchParams();
@@ -64,8 +64,8 @@ export default async function RegistrationsPage({
         </a>
       </div>
       <p className="mt-2 max-w-3xl text-sm text-muted">
-        Admin records keep registration number, name, address, enrolled course, examination centre, caste, and amount
-        paid. Student receipts are deleted from the server once downloaded.
+        Enrollment numbers are generated automatically. Payment status shows Pending until the bank confirms, then
+        Successful.
       </p>
       <form className="my-4 flex flex-wrap gap-2">
         <input name="q" defaultValue={sp.q} placeholder="Registration number, name, address, course" className="border px-3 py-2" />
@@ -103,13 +103,14 @@ export default async function RegistrationsPage({
         <table className="w-full min-w-[960px] text-sm">
           <thead className="bg-navy text-white">
             <tr>
-              <th className="p-2 text-left">Registration No.</th>
+              <th className="p-2 text-left">Enrollment / Student ID</th>
               <th className="p-2 text-left">Name</th>
-              <th className="p-2 text-left">Address</th>
-              <th className="p-2">Enrolled course</th>
+              <th className="p-2 text-left">Mobile</th>
+              <th className="p-2">Course</th>
+              <th className="p-2">Batch / Class</th>
               <th className="p-2">Exam centre</th>
-              <th className="p-2">Caste</th>
-              <th className="p-2">Amount paid</th>
+              <th className="p-2">Amount</th>
+              <th className="p-2">Payment</th>
               <th className="p-2">Date</th>
               <th className="p-2">Actions</th>
             </tr>
@@ -119,11 +120,12 @@ export default async function RegistrationsPage({
               <tr key={row.id} className="border-t">
                 <td className="p-2 font-medium">{row.applicationId}</td>
                 <td className="p-2">{studentNameOf(row)}</td>
-                <td className="p-2">{row.postalAddress || formatPostalAddress(row.applicant)}</td>
+                <td className="p-2">{row.studentMobile || "—"}</td>
                 <td className="p-2">{row.enrolledCourseName || row.course.name}</td>
+                <td className="p-2">{row.batchOrClass || "—"}</td>
                 <td className="p-2">{examCenterLabel(row.examCenter)}</td>
-                <td className="p-2">{CATEGORY_LABELS[row.category]}</td>
                 <td className="p-2">{formatInrFromPaise(row.feePaise)}</td>
+                <td className="p-2 font-medium">{registrationPaymentLabel(row.status)}</td>
                 <td className="p-2">{row.createdAt.toLocaleDateString("en-IN")}</td>
                 <td className="p-2">
                   <Link className="underline" href={`/admin/registrations/${row.id}`}>

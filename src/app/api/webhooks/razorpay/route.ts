@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { verifyWebhookSignature } from "@/lib/razorpay";
-import { finalizePaidRegistration } from "@/lib/receipt";
+import { markOrderPaid, reconcileOrder } from "@/lib/payments";
+
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   const raw = await request.text();
@@ -12,37 +14,26 @@ export async function POST(request: NextRequest) {
 
   const event = JSON.parse(raw) as {
     event?: string;
-    payload?: { payment?: { entity?: { id?: string; order_id?: string } } };
+    payload?: {
+      payment?: { entity?: { id?: string; order_id?: string; method?: string; status?: string } };
+      order?: { entity?: { id?: string } };
+    };
   };
-  const orderId = event.payload?.payment?.entity?.order_id;
+  const orderId = event.payload?.payment?.entity?.order_id || event.payload?.order?.entity?.id;
   const paymentId = event.payload?.payment?.entity?.id;
+  const paymentMode = event.payload?.payment?.entity?.method;
   if (!orderId) return NextResponse.json({ ok: true });
 
-  const payment = await prisma.payment.findUnique({ where: { razorpayOrderId: orderId } });
-  if (!payment) return NextResponse.json({ ok: true });
-
-  if (event.event === "payment.captured") {
-    await prisma.$transaction([
-      prisma.payment.update({
-        where: { id: payment.id },
-        data: { status: "SUCCESS", razorpayPaymentId: paymentId, paidAt: payment.paidAt ?? new Date() },
-      }),
-      prisma.courseRegistration.update({
-        where: { id: payment.registrationId },
-        data: { status: "PAYMENT_SUCCESSFUL" },
-      }),
-    ]);
+  const name = event.event || "";
+  if (name === "payment.captured" || name === "payment.authorized" || name === "order.paid") {
     try {
-      await finalizePaidRegistration(payment.registrationId);
+      await markOrderPaid({ orderId, paymentId, paymentMode });
     } catch {
-      // Receipt may already have been created by the verify endpoint.
+      await reconcileOrder(orderId, { paymentId });
     }
   }
-  if (event.event === "payment.failed") {
-    await prisma.$transaction([
-      prisma.payment.update({ where: { id: payment.id }, data: { status: "FAILED", razorpayPaymentId: paymentId } }),
-      prisma.courseRegistration.update({ where: { id: payment.registrationId }, data: { status: "PAYMENT_FAILED" } }),
-    ]);
+  if (name === "payment.failed") {
+    await reconcileOrder(orderId, { paymentId });
   }
 
   return NextResponse.json({ ok: true });

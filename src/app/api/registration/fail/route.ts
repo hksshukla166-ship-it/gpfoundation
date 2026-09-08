@@ -16,13 +16,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, ignored: true });
   }
 
-  await prisma.$transaction([
-    prisma.payment.update({ where: { id: payment.id }, data: { status: "FAILED" } }),
-    prisma.courseRegistration.update({
-      where: { id: payment.registrationId },
-      data: { status: "PAYMENT_FAILED" },
-    }),
-  ]);
+  await prisma.payment.update({
+    where: { id: payment.id },
+    data: { status: "PENDING" },
+  });
+  await prisma.courseRegistration.update({
+    where: { id: payment.registrationId },
+    data: { status: "PAYMENT_INITIATED" },
+  });
 
   return NextResponse.json({ ok: true });
 }

@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
 
   const amount = feePaiseForCategory(parsed.data.category, resolveFees(settings, course));
   const applicationId = await nextApplicationId();
-  const dob = new Date(parsed.data.dateOfBirth);
+  const dobRaw = parsed.data.dateOfBirth;
+  const dob = dobRaw ? new Date(dobRaw) : new Date("2000-01-01T00:00:00.000Z");
   if (Number.isNaN(dob.getTime())) {
     return NextResponse.json({ error: "Invalid date of birth." }, { status: 400 });
   }
@@ -57,19 +58,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Online payment is not available right now. Please contact the institute." }, { status: 503 });
   }
 
+  const guardianName = parsed.data.guardianName;
   const applicant = await prisma.applicant.create({
     data: {
       fullName: parsed.data.fullName,
-      fatherName: parsed.data.fatherName,
-      motherName: parsed.data.motherName,
+      fatherName: parsed.data.fatherName || guardianName,
+      motherName: parsed.data.motherName || guardianName,
+      guardianName,
       mobile: parsed.data.mobile,
       email: parsed.data.email || null,
       dateOfBirth: dob,
-      gender: parsed.data.gender,
-      address: parsed.data.address,
-      district: parsed.data.district,
-      state: parsed.data.state,
-      qualification: parsed.data.qualification,
+      gender: parsed.data.gender ?? "OTHER",
+      address: parsed.data.address || "",
+      district: parsed.data.district || "",
+      state: parsed.data.state || "",
+      qualification: parsed.data.qualification || "",
       schoolCollege: parsed.data.schoolCollege || null,
     },
   });
@@ -84,13 +87,16 @@ export async function POST(request: NextRequest) {
       feePaise: amount,
       status: "PAYMENT_INITIATED",
       postalAddress: formatPostalAddress({
-        address: parsed.data.address,
-        district: parsed.data.district,
-        state: parsed.data.state,
+        address: parsed.data.address || "",
+        district: parsed.data.district || "",
+        state: parsed.data.state || "",
       }),
       enrolledCourseName: course.name,
       studentName: parsed.data.fullName,
-      photoUrl: parsed.data.photoUrl || null,
+      guardianName,
+      batchOrClass: parsed.data.batchOrClass,
+      studentMobile: parsed.data.mobile,
+      photoUrl: parsed.data.photoUrl,
       documentUrl: parsed.data.documentUrl || null,
       additionalPreparations: parsed.data.additionalPreparations,
     },
@@ -104,7 +110,7 @@ export async function POST(request: NextRequest) {
       category: parsed.data.category,
       amountPaise: amount,
       razorpayOrderId: order.id,
-      status: "CREATED",
+      status: "PENDING",
     },
   });
 

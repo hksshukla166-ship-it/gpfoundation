@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { deleteReceiptFromServer } from "@/lib/receipt";
+import { getReceiptForDownload } from "@/lib/receipt";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,12 +10,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     return NextResponse.json({ error: "Receipt not found." }, { status: 404 });
   }
 
-  const receipt = await deleteReceiptFromServer(token);
+  const receipt = await getReceiptForDownload(token);
   if (!receipt) {
-    return NextResponse.json(
-      { error: "This receipt has already been downloaded and removed from the server." },
-      { status: 410 },
-    );
+    return NextResponse.json({ error: "Receipt is not ready yet." }, { status: 404 });
   }
 
   return new NextResponse(new Uint8Array(receipt.bytes), {

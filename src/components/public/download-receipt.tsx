@@ -1,20 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-export function DownloadReceiptButton({ token }: { token: string }) {
-  const [status, setStatus] = useState<"ready" | "working" | "done" | "gone">("ready");
+export function DownloadReceiptButton({ token, autoStart = false }: { token: string; autoStart?: boolean }) {
+  const [status, setStatus] = useState<"ready" | "working" | "done">("ready");
   const [error, setError] = useState("");
+  const started = useRef(false);
 
   async function onDownload() {
     setStatus("working");
     setError("");
     try {
       const res = await fetch(`/api/registration/receipt/${token}`, { cache: "no-store" });
-      if (res.status === 410 || res.status === 404) {
-        setStatus("gone");
-        return;
-      }
       if (!res.ok) {
         setStatus("ready");
         setError("The receipt could not be downloaded. Please try once more.");
@@ -39,14 +36,11 @@ export function DownloadReceiptButton({ token }: { token: string }) {
     }
   }
 
-  if (status === "done" || status === "gone") {
-    return (
-      <p className="mt-4 text-sm text-muted">
-        Receipt downloaded. It has been deleted from the GP Foundation website server. Keep the saved file and your
-        registration number.
-      </p>
-    );
-  }
+  useEffect(() => {
+    if (!autoStart || started.current) return;
+    started.current = true;
+    void onDownload();
+  }, [autoStart, token]);
 
   return (
     <div className="mt-6">
@@ -56,12 +50,53 @@ export function DownloadReceiptButton({ token }: { token: string }) {
         disabled={status === "working"}
         className="bg-navy px-5 py-3 text-xs tracking-widest text-white disabled:opacity-60"
       >
-        {status === "working" ? "PREPARING RECEIPT…" : "DOWNLOAD RECEIPT"}
+        {status === "working" ? "DOWNLOADING RECEIPT…" : status === "done" ? "DOWNLOAD RECEIPT AGAIN" : "DOWNLOAD RECEIPT"}
       </button>
       <p className="mt-2 text-sm text-muted">
-        Download now. After you download, this receipt is removed from the website server and cannot be downloaded again.
+        {status === "done"
+          ? "Receipt download started. You can download it again from this page if needed."
+          : "Your receipt will download automatically after successful payment. You can also download it instantly here."}
       </p>
       {error ? <p className="mt-2 text-sm text-red-700">{error}</p> : null}
     </div>
   );
+}
+
+export function PaymentStatusPoller({ applicationId }: { applicationId: string }) {
+  const [message, setMessage] = useState("Confirming payment with the bank…");
+
+  useEffect(() => {
+    let cancelled = false;
+    let attempts = 0;
+    async function tick() {
+      attempts += 1;
+      try {
+        const res = await fetch(`/api/registration/status?applicationId=${encodeURIComponent(applicationId)}`, {
+          cache: "no-store",
+        });
+        const json = await res.json();
+        if (cancelled) return;
+        if (json.paymentStatus === "SUCCESS") {
+          window.location.reload();
+          return;
+        }
+        if (json.paymentStatus === "FAILED") {
+          setMessage("Payment is not successful yet. If money was deducted, wait a minute and refresh this page.");
+        } else {
+          setMessage("Payment is pending. If you have already paid, this page will update automatically.");
+        }
+      } catch {
+        if (!cancelled) setMessage("Checking payment status…");
+      }
+      if (!cancelled && attempts < 20) {
+        window.setTimeout(() => void tick(), 2500);
+      }
+    }
+    void tick();
+    return () => {
+      cancelled = true;
+    };
+  }, [applicationId]);
+
+  return <p className="mt-4 text-sm text-muted">{message}</p>;
 }

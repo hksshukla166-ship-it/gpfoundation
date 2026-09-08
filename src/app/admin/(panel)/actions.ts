@@ -251,6 +251,14 @@ export async function updateRegistrationStatus(form: FormData) {
   });
 }
 
+export async function syncPendingPaymentsFromRazorpay() {
+  await guard();
+  const { syncPendingPayments } = await import("@/lib/payments");
+  await syncPendingPayments();
+  revalidatePath("/admin/payments");
+  revalidatePath("/admin/registrations");
+}
+
 export async function changePassword(form: FormData) {
   const admin = await guard();
   const next = str(form, "password");

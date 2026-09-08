@@ -29,8 +29,7 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
     <div>
       <h1 className="font-display text-3xl">Applicants</h1>
       <p className="mt-2 max-w-3xl text-sm text-muted">
-        After payment, admin records keep registration number, name, address, enrolled course, examination centre,
-        caste, and amount paid.
+        Student enrollment numbers, payment status, and receipt details are kept for admin records.
       </p>
       <form className="my-4">
         <input name="q" defaultValue={q} placeholder="Registration number or name" className="border px-3 py-2" />
