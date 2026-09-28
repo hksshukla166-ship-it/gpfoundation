@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { reconcileRegistrationByApplicationId } from "@/lib/payments";
+import { ensureReceiptForApplication, reconcileRegistrationByApplicationId } from "@/lib/payments";
 import { paymentStatusLabel } from "@/lib/payment-status";
 
 export const runtime = "nodejs";
@@ -15,10 +15,14 @@ export async function GET(request: NextRequest) {
   if (!result) {
     return NextResponse.json({ error: "Application not found." }, { status: 404 });
   }
+  let receiptToken = result.receiptToken || null;
+  if (result.paymentStatus === "SUCCESS" && !receiptToken) {
+    receiptToken = (await ensureReceiptForApplication(applicationId)) || null;
+  }
   return NextResponse.json({
     applicationId: result.applicationId,
     paymentStatus: result.paymentStatus,
     paymentStatusLabel: paymentStatusLabel(result.paymentStatus),
-    receiptToken: result.receiptToken || null,
+    receiptToken,
   });
 }

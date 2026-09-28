@@ -9,8 +9,31 @@ type RazorpayPaymentEntity = {
   order_id?: string;
 };
 
+type RazorpayOrderEntity = {
+  id?: string;
+  status?: string;
+};
+
 function isCaptured(status?: string) {
-  return status === "captured" || status === "authorized";
+  const normalized = status?.toLowerCase();
+  return normalized === "captured" || normalized === "authorized";
+}
+
+function orderIsPaid(order: RazorpayOrderEntity | null | undefined) {
+  return order?.status?.toLowerCase() === "paid";
+}
+
+async function fetchRazorpayOrder(orderId: string): Promise<RazorpayOrderEntity | null> {
+  try {
+    const razorpay = getRazorpay();
+    return (await razorpay.orders.fetch(orderId)) as RazorpayOrderEntity;
+  } catch {
+    return null;
+  }
+}
+
+function findCapturedPayment(items: RazorpayPaymentEntity[]) {
+  return items.find((item) => isCaptured(item.status)) ?? null;
 }
 
 export async function fetchRazorpayPaymentsForOrder(orderId: string): Promise<RazorpayPaymentEntity[]> {
@@ -58,11 +81,16 @@ export async function markOrderPaid(args: {
     }),
   ]);
 
-  const receiptToken = await finalizePaidRegistration(payment.registrationId);
+  let receiptToken: string | null = null;
+  try {
+    receiptToken = await finalizePaidRegistration(payment.registrationId);
+  } catch {
+    receiptToken = null;
+  }
   const registration = await prisma.courseRegistration.findUnique({ where: { id: payment.registrationId } });
   return {
     applicationId: registration?.applicationId,
-    receiptToken,
+    receiptToken: receiptToken || registration?.receiptToken || null,
     receiptNumber: registration?.receiptNumber,
   };
 }
@@ -81,28 +109,53 @@ export async function reconcileOrder(orderId: string, extras?: { paymentId?: str
     };
   }
 
-  let remote: RazorpayPaymentEntity | null = extras?.paymentId ? await fetchRazorpayPayment(extras.paymentId) : null;
-  if (remote && remote.order_id && remote.order_id !== orderId) {
-    remote = null;
-  }
-  if (!remote || !isCaptured(remote.status)) {
-    const items = await fetchRazorpayPaymentsForOrder(orderId);
-    remote = items.find((item) => isCaptured(item.status)) || items[0] || null;
-  }
+  const [order, items] = await Promise.all([fetchRazorpayOrder(orderId), fetchRazorpayPaymentsForOrder(orderId)]);
+  const capturedOnOrder = findCapturedPayment(items);
 
-  if (remote && isCaptured(remote.status)) {
+  if (capturedOnOrder) {
     const result = await markOrderPaid({
       orderId,
-      paymentId: remote.id || extras?.paymentId,
+      paymentId: capturedOnOrder.id || extras?.paymentId,
       signature: extras?.signature,
-      paymentMode: remote.method,
+      paymentMode: capturedOnOrder.method,
     });
     return { ...result, paymentStatus: "SUCCESS" as const };
   }
 
-  if (remote?.status === "failed") {
+  if (extras?.paymentId) {
+    const direct = await fetchRazorpayPayment(extras.paymentId);
+    if (direct && (!direct.order_id || direct.order_id === orderId) && isCaptured(direct.status)) {
+      const result = await markOrderPaid({
+        orderId,
+        paymentId: direct.id || extras.paymentId,
+        signature: extras?.signature,
+        paymentMode: direct.method,
+      });
+      return { ...result, paymentStatus: "SUCCESS" as const };
+    }
+  }
+
+  if (orderIsPaid(order)) {
+    const fallback = extras?.paymentId || items.at(-1)?.id;
+    const result = await markOrderPaid({
+      orderId,
+      paymentId: fallback,
+      signature: extras?.signature,
+      paymentMode: items.at(-1)?.method,
+    });
+    return { ...result, paymentStatus: "SUCCESS" as const };
+  }
+
+  const onlyFailedAttempts =
+    items.length > 0 && items.every((item) => item.status?.toLowerCase() === "failed") && !orderIsPaid(order);
+
+  if (onlyFailedAttempts) {
+    const latestFailed = items.at(-1);
     await prisma.$transaction([
-      prisma.payment.update({ where: { id: local.id }, data: { status: "FAILED", razorpayPaymentId: remote.id } }),
+      prisma.payment.update({
+        where: { id: local.id },
+        data: { status: "FAILED", razorpayPaymentId: latestFailed?.id || local.razorpayPaymentId },
+      }),
       prisma.courseRegistration.update({ where: { id: local.registrationId }, data: { status: "PAYMENT_FAILED" } }),
     ]);
     const registration = await prisma.courseRegistration.findUnique({ where: { id: local.registrationId } });
@@ -110,7 +163,11 @@ export async function reconcileOrder(orderId: string, extras?: { paymentId?: str
   }
 
   const registration = await prisma.courseRegistration.findUnique({ where: { id: local.registrationId } });
-  return { applicationId: registration?.applicationId, paymentStatus: "PENDING" as const, receiptToken: null };
+  return {
+    applicationId: registration?.applicationId,
+    paymentStatus: "PENDING" as const,
+    receiptToken: registration?.receiptToken || null,
+  };
 }
 
 export async function reconcileRegistrationByApplicationId(applicationId: string) {
@@ -133,8 +190,14 @@ export async function reconcileRegistrationByApplicationId(applicationId: string
 }
 
 export async function syncPendingPayments(limit = 40) {
+  const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
   const pending = await prisma.payment.findMany({
-    where: { status: { in: ["CREATED", "PENDING"] } },
+    where: {
+      OR: [
+        { status: { in: ["CREATED", "PENDING"] } },
+        { status: "FAILED", createdAt: { gte: since } },
+      ],
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
   });
@@ -144,4 +207,25 @@ export async function syncPendingPayments(limit = 40) {
     if (result?.paymentStatus === "SUCCESS") updated += 1;
   }
   return updated;
+}
+
+/** Ensures receipt token exists when payment already succeeded (e.g. receipt step failed earlier). */
+export async function ensureReceiptForApplication(applicationId: string) {
+  const registration = await prisma.courseRegistration.findUnique({
+    where: { applicationId },
+    include: { payments: { where: { status: "SUCCESS" }, take: 1 } },
+  });
+  if (!registration) return null;
+  const paid =
+    registration.status === "PAYMENT_SUCCESSFUL" ||
+    registration.payments.length > 0 ||
+    registration.status === "VERIFIED" ||
+    registration.status === "CONFIRMED";
+  if (!paid) return null;
+  if (registration.receiptToken) return registration.receiptToken;
+  try {
+    return await finalizePaidRegistration(registration.id);
+  } catch {
+    return null;
+  }
 }

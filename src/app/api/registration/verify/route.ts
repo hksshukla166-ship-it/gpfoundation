@@ -25,9 +25,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const reconciled = await reconcileOrder(orderId, { paymentId, signature });
+    let reconciled = await reconcileOrder(orderId, { paymentId, signature });
     if (!reconciled) return NextResponse.json({ error: "Order not found." }, { status: 404 });
     if (reconciled.paymentStatus !== "SUCCESS") {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      reconciled = await reconcileOrder(orderId, { paymentId, signature });
+    }
+    if (!reconciled || reconciled.paymentStatus !== "SUCCESS") {
       return NextResponse.json({ error: "Payment is still pending. Please wait a moment." }, { status: 409 });
     }
     return NextResponse.json({

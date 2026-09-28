@@ -102,6 +102,7 @@ export function RegistrationForm({
     }
 
     const Razorpay = await loadRazorpay();
+    let paymentCompleted = false;
     const rzp = new Razorpay({
       key: razorpayKey,
       amount: json.amount,
@@ -111,19 +112,38 @@ export function RegistrationForm({
       order_id: json.orderId,
       prefill: { name: payload.fullName, contact: payload.mobile },
       handler: async (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => {
-        try {
-          await fetch("/api/registration/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(response),
-          });
-        } catch {
-          // Success page will confirm payment with Razorpay and generate the receipt.
+        paymentCompleted = true;
+        let receiptToken = "";
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          try {
+            const verifyRes = await fetch("/api/registration/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(response),
+            });
+            const verifyJson = await verifyRes.json().catch(() => ({}));
+            if (verifyRes.ok && verifyJson.paymentStatus === "SUCCESS") {
+              receiptToken = typeof verifyJson.receiptToken === "string" ? verifyJson.receiptToken : "";
+              break;
+            }
+            if (verifyRes.status === 409 && attempt < 5) {
+              await new Promise((resolve) => window.setTimeout(resolve, 1500));
+              continue;
+            }
+          } catch {
+            if (attempt < 5) {
+              await new Promise((resolve) => window.setTimeout(resolve, 1500));
+            }
+          }
         }
-        window.location.href = `/registration/success?applicationId=${encodeURIComponent(json.applicationId)}`;
+        const successUrl = new URL("/registration/success", window.location.origin);
+        successUrl.searchParams.set("applicationId", json.applicationId);
+        if (receiptToken) successUrl.searchParams.set("receiptToken", receiptToken);
+        window.location.href = successUrl.toString();
       },
     });
     rzp.on("payment.failed", () => {
+      if (paymentCompleted) return;
       window.location.href = `/registration/success?applicationId=${encodeURIComponent(json.applicationId)}&status=pending`;
     });
     rzp.open();

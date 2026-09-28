@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { getReceiptForDownload } from "@/lib/receipt";
+import { ensureReceiptForApplication } from "@/lib/payments";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,7 +12,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     return NextResponse.json({ error: "Receipt not found." }, { status: 404 });
   }
 
-  const receipt = await getReceiptForDownload(token);
+  let receipt = await getReceiptForDownload(token);
+  if (!receipt) {
+    const registration = await prisma.courseRegistration.findUnique({ where: { receiptToken: token } });
+    if (registration) {
+      await ensureReceiptForApplication(registration.applicationId).catch(() => null);
+      receipt = await getReceiptForDownload(token);
+    }
+  }
   if (!receipt) {
     return NextResponse.json({ error: "Receipt is not ready yet." }, { status: 404 });
   }

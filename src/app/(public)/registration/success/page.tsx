@@ -7,7 +7,7 @@ import { examCenterLabel } from "@/lib/catalog";
 import { safeDb } from "@/lib/settings";
 import { DownloadReceiptButton, PaymentStatusPoller } from "@/components/public/download-receipt";
 import { paymentStatusLabel } from "@/lib/payment-status";
-import { reconcileRegistrationByApplicationId } from "@/lib/payments";
+import { ensureReceiptForApplication, reconcileRegistrationByApplicationId } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Registration Status" };
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Registration Status" };
 export default async function RegistrationSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ applicationId?: string; status?: string; reason?: string }>;
+  searchParams: Promise<{ applicationId?: string; status?: string; reason?: string; receiptToken?: string }>;
 }) {
   const { applicationId, status, reason } = await searchParams;
   if (status === "failed" && !applicationId) {
@@ -38,6 +38,7 @@ export default async function RegistrationSuccessPage({
   }
 
   await reconcileRegistrationByApplicationId(applicationId).catch(() => null);
+  await ensureReceiptForApplication(applicationId).catch(() => null);
 
   const registration = await safeDb(
     () =>
@@ -58,6 +59,7 @@ export default async function RegistrationSuccessPage({
 
   const payment = registration.payments[0];
   const paid = registration.status === "PAYMENT_SUCCESSFUL" || payment?.status === "SUCCESS";
+  const receiptToken = registration.receiptToken || (await ensureReceiptForApplication(applicationId).catch(() => null));
   const courseName = registration.enrolledCourseName || registration.course.name;
   const statusLabel = paid ? "Successful" : paymentStatusLabel(payment?.status);
 
@@ -83,7 +85,7 @@ export default async function RegistrationSuccessPage({
           Payment Status: <strong>{paid ? "PAID / SUCCESS" : statusLabel}</strong>
         </p>
       </div>
-      {paid && registration.receiptToken ? <DownloadReceiptButton token={registration.receiptToken} autoStart /> : null}
+      {paid && receiptToken ? <DownloadReceiptButton token={receiptToken} autoStart /> : null}
       {!paid ? <PaymentStatusPoller applicationId={registration.applicationId} /> : null}
       <p className="mt-6 text-sm text-muted">Please save your enrollment number for all future correspondence with GP Foundation.</p>
     </Section>
