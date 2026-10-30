@@ -12,9 +12,11 @@ export default async function ApplicantsPage({ searchParams }: { searchParams: P
         OR: [
           { applicationId: { contains: q, mode: "insensitive" as const } },
           { studentName: { contains: q, mode: "insensitive" as const } },
+          { studentMobile: { contains: q } },
           { postalAddress: { contains: q, mode: "insensitive" as const } },
           { enrolledCourseName: { contains: q, mode: "insensitive" as const } },
           { applicant: { fullName: { contains: q, mode: "insensitive" as const } } },
+          { applicant: { mobile: { contains: q } } },
         ],
       }
     : {};

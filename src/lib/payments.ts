@@ -7,6 +7,7 @@ type RazorpayPaymentEntity = {
   status?: string;
   method?: string;
   order_id?: string;
+  amount?: number;
 };
 
 type RazorpayOrderEntity = {
@@ -60,26 +61,56 @@ export async function markOrderPaid(args: {
   paymentId?: string;
   signature?: string;
   paymentMode?: string;
+  amountPaise?: number;
 }) {
   const payment = await prisma.payment.findUnique({ where: { razorpayOrderId: args.orderId } });
   if (!payment) return null;
+  if (args.amountPaise != null && args.amountPaise !== payment.amountPaise) {
+    return null;
+  }
+  if (args.paymentId) {
+    const remote = await fetchRazorpayPayment(args.paymentId);
+    if (remote?.amount != null && remote.amount !== payment.amountPaise) {
+      return null;
+    }
+    if (remote?.order_id && remote.order_id !== args.orderId) {
+      return null;
+    }
+  }
 
-  await prisma.$transaction([
-    prisma.payment.update({
-      where: { id: payment.id },
-      data: {
-        status: "SUCCESS",
-        razorpayPaymentId: args.paymentId || payment.razorpayPaymentId,
-        razorpaySignature: args.signature || payment.razorpaySignature,
-        paymentMode: args.paymentMode || payment.paymentMode,
-        paidAt: payment.paidAt ?? new Date(),
-      },
-    }),
-    prisma.courseRegistration.update({
-      where: { id: payment.registrationId },
-      data: { status: "PAYMENT_SUCCESSFUL" },
-    }),
-  ]);
+  if (payment.status === "SUCCESS") {
+    const receiptToken = await finalizePaidRegistration(payment.registrationId);
+    const registration = await prisma.courseRegistration.findUnique({ where: { id: payment.registrationId } });
+    return {
+      applicationId: registration?.applicationId,
+      receiptToken: receiptToken || registration?.receiptToken || null,
+      receiptNumber: registration?.receiptNumber,
+    };
+  }
+
+  const marked = await prisma.payment.updateMany({
+    where: { id: payment.id, status: { not: "SUCCESS" } },
+    data: {
+      status: "SUCCESS",
+      razorpayPaymentId: args.paymentId || payment.razorpayPaymentId,
+      razorpaySignature: args.signature || payment.razorpaySignature,
+      paymentMode: args.paymentMode || payment.paymentMode,
+      paidAt: payment.paidAt ?? new Date(),
+    },
+  });
+  if (marked.count === 0) {
+    const receiptToken = await finalizePaidRegistration(payment.registrationId);
+    const registration = await prisma.courseRegistration.findUnique({ where: { id: payment.registrationId } });
+    return {
+      applicationId: registration?.applicationId,
+      receiptToken: receiptToken || registration?.receiptToken || null,
+      receiptNumber: registration?.receiptNumber,
+    };
+  }
+  await prisma.courseRegistration.update({
+    where: { id: payment.registrationId },
+    data: { status: "PAYMENT_SUCCESSFUL" },
+  });
 
   let receiptToken: string | null = null;
   try {
@@ -113,11 +144,16 @@ export async function reconcileOrder(orderId: string, extras?: { paymentId?: str
   const capturedOnOrder = findCapturedPayment(items);
 
   if (capturedOnOrder) {
+    if (capturedOnOrder.amount != null && capturedOnOrder.amount !== local.amountPaise) {
+      const registration = await prisma.courseRegistration.findUnique({ where: { id: local.registrationId } });
+      return { applicationId: registration?.applicationId, paymentStatus: "PENDING" as const, receiptToken: registration?.receiptToken || null };
+    }
     const result = await markOrderPaid({
       orderId,
       paymentId: capturedOnOrder.id || extras?.paymentId,
       signature: extras?.signature,
       paymentMode: capturedOnOrder.method,
+      amountPaise: capturedOnOrder.amount,
     });
     return { ...result, paymentStatus: "SUCCESS" as const };
   }
@@ -125,11 +161,16 @@ export async function reconcileOrder(orderId: string, extras?: { paymentId?: str
   if (extras?.paymentId) {
     const direct = await fetchRazorpayPayment(extras.paymentId);
     if (direct && (!direct.order_id || direct.order_id === orderId) && isCaptured(direct.status)) {
+      if (direct.amount != null && direct.amount !== local.amountPaise) {
+        const registration = await prisma.courseRegistration.findUnique({ where: { id: local.registrationId } });
+        return { applicationId: registration?.applicationId, paymentStatus: "PENDING" as const, receiptToken: registration?.receiptToken || null };
+      }
       const result = await markOrderPaid({
         orderId,
         paymentId: direct.id || extras.paymentId,
         signature: extras?.signature,
         paymentMode: direct.method,
+        amountPaise: direct.amount,
       });
       return { ...result, paymentStatus: "SUCCESS" as const };
     }

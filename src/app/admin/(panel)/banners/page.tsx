@@ -2,7 +2,6 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { saveBanner } from "../actions";
 import { Check, Field, SaveBar } from "@/components/admin/form";
-import { ImageField } from "@/components/admin/image-field";
 
 export default async function BannersPage({ searchParams }: { searchParams: Promise<{ id?: string }> }) {
   const { id } = await searchParams;
@@ -19,7 +18,8 @@ export default async function BannersPage({ searchParams }: { searchParams: Prom
         <Field name="heading" label="Heading" defaultValue={current?.heading} />
         <Field name="subtitle" label="Subtitle" defaultValue={current?.subtitle} />
         <Field name="supporting" label="Supporting text" defaultValue={current?.supporting} />
-        <ImageField name="imageUrl" defaultValue={current?.imageUrl} folder="banners" />
+        <p className="text-sm text-muted">Hero photographs are not shown on the public website. Banner text and buttons still appear.</p>
+        <input type="hidden" name="imageUrl" value={current?.imageUrl || ""} />
         <Field name="ctaLabel" label="CTA label" defaultValue={current?.ctaLabel} />
         <Field name="ctaHref" label="CTA link" defaultValue={current?.ctaHref} />
         <Field name="displayOrder" label="Order" type="number" defaultValue={current?.displayOrder ?? items.length + 1} />

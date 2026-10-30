@@ -20,7 +20,7 @@ export function DownloadReceiptButton({ token, autoStart = false }: { token: str
       const blob = await res.blob();
       const header = res.headers.get("Content-Disposition") || "";
       const match = header.match(/filename="([^"]+)"/);
-      const filename = match?.[1] || "GP-Foundation-Receipt.html";
+      const filename = match?.[1] || "GP-Foundation-Receipt.pdf";
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -50,8 +50,16 @@ export function DownloadReceiptButton({ token, autoStart = false }: { token: str
         disabled={status === "working"}
         className="bg-navy px-5 py-3 text-xs tracking-widest text-white disabled:opacity-60"
       >
-        {status === "working" ? "DOWNLOADING RECEIPT…" : status === "done" ? "DOWNLOAD RECEIPT AGAIN" : "DOWNLOAD RECEIPT"}
+        {status === "working" ? "DOWNLOADING RECEIPT…" : status === "done" ? "DOWNLOAD RECEIPT AGAIN" : "DOWNLOAD RECEIPT AS PDF"}
       </button>
+      <a
+        href={`/registration/receipt/${token}/print`}
+        target="_blank"
+        rel="noreferrer"
+        className="ml-3 inline-block border border-navy px-5 py-3 text-xs tracking-widest"
+      >
+        PRINT RECEIPT
+      </a>
       <p className="mt-2 text-sm text-muted">
         {status === "done"
           ? "Receipt download started. You can download it again from this page if needed."
@@ -62,7 +70,7 @@ export function DownloadReceiptButton({ token, autoStart = false }: { token: str
   );
 }
 
-export function PaymentStatusPoller({ applicationId }: { applicationId: string }) {
+export function PaymentStatusPoller({ applicationId, token }: { applicationId: string; token: string }) {
   const [message, setMessage] = useState("Confirming payment with the bank…");
 
   useEffect(() => {
@@ -71,7 +79,8 @@ export function PaymentStatusPoller({ applicationId }: { applicationId: string }
     async function tick() {
       attempts += 1;
       try {
-        const res = await fetch(`/api/registration/status?applicationId=${encodeURIComponent(applicationId)}`, {
+        const params = new URLSearchParams({ applicationId, token });
+        const res = await fetch(`/api/registration/status?${params.toString()}`, {
           cache: "no-store",
         });
         const json = await res.json();
@@ -96,7 +105,7 @@ export function PaymentStatusPoller({ applicationId }: { applicationId: string }
     return () => {
       cancelled = true;
     };
-  }, [applicationId]);
+  }, [applicationId, token]);
 
   return <p className="mt-4 text-sm text-muted">{message}</p>;
 }

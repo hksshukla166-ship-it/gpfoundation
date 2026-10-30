@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Section } from "@/components/public/section";
-import { formatInrFromPaise } from "@/lib/fees";
+import { formatInrExact } from "@/lib/fees";
 import { examCenterLabel } from "@/lib/catalog";
+import { courseTypeLabel, examinationGroupLabel, examinationLabel } from "@/lib/exam-groups";
 import { safeDb } from "@/lib/settings";
 import { DownloadReceiptButton, PaymentStatusPoller } from "@/components/public/download-receipt";
 import { paymentStatusLabel } from "@/lib/payment-status";
@@ -17,7 +18,7 @@ export default async function RegistrationSuccessPage({
 }: {
   searchParams: Promise<{ applicationId?: string; status?: string; reason?: string; receiptToken?: string }>;
 }) {
-  const { applicationId, status, reason } = await searchParams;
+  const { applicationId, status, reason, receiptToken: tokenFromQuery } = await searchParams;
   if (status === "failed" && !applicationId) {
     return (
       <Section title="Payment failed">
@@ -59,7 +60,10 @@ export default async function RegistrationSuccessPage({
 
   const payment = registration.payments[0];
   const paid = registration.status === "PAYMENT_SUCCESSFUL" || payment?.status === "SUCCESS";
-  const receiptToken = registration.receiptToken || (await ensureReceiptForApplication(applicationId).catch(() => null));
+  const accessOk = Boolean(tokenFromQuery && registration.receiptToken && tokenFromQuery === registration.receiptToken);
+  const receiptToken = accessOk
+    ? registration.receiptToken || (await ensureReceiptForApplication(applicationId).catch(() => null))
+    : null;
   const courseName = registration.enrolledCourseName || registration.course.name;
   const statusLabel = paid ? "Successful" : paymentStatusLabel(payment?.status);
 
@@ -69,24 +73,43 @@ export default async function RegistrationSuccessPage({
         <p>
           Enrollment / Student ID: <strong className="tracking-wide">{registration.applicationId}</strong>
         </p>
-        {registration.receiptNumber ? (
-          <p>
-            Receipt Number: <strong>{registration.receiptNumber}</strong>
-          </p>
-        ) : null}
-        {registration.studentName ? <p>विद्यार्थी का नाम: {registration.studentName}</p> : null}
-        {registration.studentMobile ? <p>मोबाइल: {registration.studentMobile}</p> : null}
-        {registration.guardianName ? <p>अभिभावक: {registration.guardianName}</p> : null}
-        <p>कोर्स: {courseName}</p>
-        {registration.batchOrClass ? <p>बैच/कक्षा: {registration.batchOrClass}</p> : null}
-        <p>परीक्षा केंद्र: {examCenterLabel(registration.examCenter)}</p>
-        <p>Amount paid: {formatInrFromPaise(registration.feePaise)}</p>
         <p>
           Payment Status: <strong>{paid ? "PAID / SUCCESS" : statusLabel}</strong>
         </p>
+        {accessOk ? (
+          <>
+            {registration.receiptNumber ? (
+              <p>
+                Receipt Number: <strong>{registration.receiptNumber}</strong>
+              </p>
+            ) : null}
+            {registration.studentName ? <p>विद्यार्थी का नाम: {registration.studentName}</p> : null}
+            {registration.studentMobile ? <p>मोबाइल: {registration.studentMobile}</p> : null}
+            {registration.fatherName || registration.guardianName ? (
+              <p>पिता का नाम: {registration.fatherName || registration.guardianName}</p>
+            ) : null}
+            <p>कोर्स: {courseName}</p>
+            <p>Course Type: {courseTypeLabel(registration.courseType)}</p>
+            <p>Examination Group: {examinationGroupLabel(registration.examinationGroup)}</p>
+            <p>Selected Examination: {examinationLabel(registration.examinationGroup, registration.selectedExamination)}</p>
+            <p>Hostel Facility: {registration.hostelRequired ? "Yes" : "No"}</p>
+            {registration.batchOrClass ? <p>बैच/कक्षा: {registration.batchOrClass}</p> : null}
+            <p>परीक्षा केंद्र: {examCenterLabel(registration.examCenter)}</p>
+            <p>Course Registration Fee: {formatInrExact(registration.courseFeePaise ?? Math.max(0, registration.feePaise - (registration.hostelFeePaise || 0)))}</p>
+            <p>Hostel Registration Fee: {formatInrExact(registration.hostelFeePaise || 0)}</p>
+            <p>Total Amount: {formatInrExact(payment?.amountPaise ?? registration.feePaise)}</p>
+          </>
+        ) : (
+          <p className="text-sm text-muted">
+            Open this page from your payment confirmation link to view full registration details and download the
+            receipt.
+          </p>
+        )}
       </div>
       {paid && receiptToken ? <DownloadReceiptButton token={receiptToken} autoStart /> : null}
-      {!paid ? <PaymentStatusPoller applicationId={registration.applicationId} /> : null}
+      {!paid && accessOk ? (
+        <PaymentStatusPoller applicationId={registration.applicationId} token={tokenFromQuery || ""} />
+      ) : null}
       <p className="mt-6 text-sm text-muted">Please save your enrollment number for all future correspondence with GP Foundation.</p>
     </Section>
   );

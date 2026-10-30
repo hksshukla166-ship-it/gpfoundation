@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { CourseType, ExaminationGroup, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { formatInrFromPaise } from "@/lib/fees";
-import { examCenterLabel, EXAM_CENTERS } from "@/lib/catalog";
+import { formatInrExact } from "@/lib/fees";
+import { EXAM_CENTERS } from "@/lib/catalog";
+import { COURSE_TYPES, EXAMINATION_GROUPS, allExams, courseTypeLabel, examinationGroupLabel, examinationLabel, examsForGroup } from "@/lib/exam-groups";
 import { registrationPaymentLabel } from "@/lib/payment-status";
 
 function query(values: Record<string, string | undefined>) {
@@ -21,32 +23,52 @@ function studentNameOf(row: { studentName: string | null; applicant: { fullName:
 export default async function RegistrationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; courseId?: string; status?: string; category?: string; examCenter?: string; page?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    courseId?: string;
+    status?: string;
+    category?: string;
+    examCenter?: string;
+    courseType?: string;
+    examinationGroup?: string;
+    selectedExamination?: string;
+    hostel?: string;
+    page?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page || 1));
   const take = 20;
-  const where = {
+  const where: Prisma.CourseRegistrationWhereInput = {
     ...(sp.courseId ? { courseId: sp.courseId } : {}),
     ...(sp.status ? { status: sp.status as never } : {}),
     ...(sp.category ? { category: sp.category as never } : {}),
     ...(sp.examCenter ? { examCenter: sp.examCenter as never } : {}),
+    ...(sp.courseType ? { courseType: sp.courseType as CourseType } : {}),
+    ...(sp.examinationGroup ? { examinationGroup: sp.examinationGroup as ExaminationGroup } : {}),
+    ...(sp.selectedExamination ? { selectedExamination: sp.selectedExamination } : {}),
+    ...(sp.hostel === "yes" ? { hostelRequired: true } : {}),
+    ...(sp.hostel === "no" ? { hostelRequired: false } : {}),
     ...(sp.q
       ? {
           OR: [
-            { applicationId: { contains: sp.q, mode: "insensitive" as const } },
-            { studentName: { contains: sp.q, mode: "insensitive" as const } },
-            { postalAddress: { contains: sp.q, mode: "insensitive" as const } },
-            { enrolledCourseName: { contains: sp.q, mode: "insensitive" as const } },
-            { applicant: { fullName: { contains: sp.q, mode: "insensitive" as const } } },
+            { applicationId: { contains: sp.q, mode: "insensitive" } },
+            { studentName: { contains: sp.q, mode: "insensitive" } },
+            { studentMobile: { contains: sp.q } },
+            { fatherName: { contains: sp.q, mode: "insensitive" } },
+            { postalAddress: { contains: sp.q, mode: "insensitive" } },
+            { enrolledCourseName: { contains: sp.q, mode: "insensitive" } },
+            { applicant: { fullName: { contains: sp.q, mode: "insensitive" } } },
+            { applicant: { mobile: { contains: sp.q } } },
           ],
         }
       : {}),
   };
+  const selectedGroupExams = sp.examinationGroup ? examsForGroup(sp.examinationGroup) : allExams();
   const [items, total, courses] = await Promise.all([
     prisma.courseRegistration.findMany({
       where,
-      include: { course: true, applicant: { select: { fullName: true, address: true, district: true, state: true } } },
+      include: { course: true, applicant: { select: { fullName: true, address: true, district: true, state: true, mobile: true } } },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * take,
       take,
@@ -68,7 +90,7 @@ export default async function RegistrationsPage({
         Successful.
       </p>
       <form className="my-4 flex flex-wrap gap-2">
-        <input name="q" defaultValue={sp.q} placeholder="Registration number, name, address, course" className="border px-3 py-2" />
+        <input name="q" defaultValue={sp.q} placeholder="Registration number, name, or mobile" className="border px-3 py-2" />
         <select name="courseId" defaultValue={sp.courseId} className="border px-2">
           <option value="">All courses</option>
           {courses.map((c) => (
@@ -76,6 +98,35 @@ export default async function RegistrationsPage({
               {c.name}
             </option>
           ))}
+        </select>
+        <select name="courseType" defaultValue={sp.courseType} className="border px-2">
+          <option value="">All course types</option>
+          {COURSE_TYPES.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+        <select name="examinationGroup" defaultValue={sp.examinationGroup} className="border px-2">
+          <option value="">All examination groups</option>
+          {EXAMINATION_GROUPS.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+        <select name="selectedExamination" defaultValue={sp.selectedExamination} className="border px-2">
+          <option value="">All examinations</option>
+          {selectedGroupExams.map((exam, index) => (
+            <option key={`${exam.id}-${index}`} value={exam.id}>
+              {exam.label}
+            </option>
+          ))}
+        </select>
+        <select name="hostel" defaultValue={sp.hostel} className="border px-2">
+          <option value="">Hostel: all</option>
+          <option value="yes">Hostel: Yes</option>
+          <option value="no">Hostel: No</option>
         </select>
         <select name="category" defaultValue={sp.category} className="border px-2">
           <option value="">All categories</option>
@@ -92,7 +143,7 @@ export default async function RegistrationsPage({
           ))}
         </select>
         <select name="status" defaultValue={sp.status} className="border px-2">
-          <option value="">All statuses</option>
+          <option value="">All payment statuses</option>
           {["PENDING", "PAYMENT_INITIATED", "PAYMENT_SUCCESSFUL", "PAYMENT_FAILED", "UNDER_REVIEW", "VERIFIED", "CONFIRMED", "REJECTED"].map((s) => (
             <option key={s}>{s}</option>
           ))}
@@ -100,16 +151,17 @@ export default async function RegistrationsPage({
         <button className="border px-3">Filter</button>
       </form>
       <div className="overflow-x-auto bg-white">
-        <table className="w-full min-w-[960px] text-sm">
+        <table className="w-full min-w-[1180px] text-sm">
           <thead className="bg-navy text-white">
             <tr>
-              <th className="p-2 text-left">Enrollment / Student ID</th>
+              <th className="p-2 text-left">Registration No.</th>
               <th className="p-2 text-left">Name</th>
               <th className="p-2 text-left">Mobile</th>
-              <th className="p-2">Course</th>
-              <th className="p-2">Batch / Class</th>
-              <th className="p-2">Exam centre</th>
-              <th className="p-2">Amount</th>
+              <th className="p-2">Course Type</th>
+              <th className="p-2">Exam Group</th>
+              <th className="p-2">Examination</th>
+              <th className="p-2">Hostel</th>
+              <th className="p-2">Total</th>
               <th className="p-2">Payment</th>
               <th className="p-2">Date</th>
               <th className="p-2">Actions</th>
@@ -120,11 +172,12 @@ export default async function RegistrationsPage({
               <tr key={row.id} className="border-t">
                 <td className="p-2 font-medium">{row.applicationId}</td>
                 <td className="p-2">{studentNameOf(row)}</td>
-                <td className="p-2">{row.studentMobile || "—"}</td>
-                <td className="p-2">{row.enrolledCourseName || row.course.name}</td>
-                <td className="p-2">{row.batchOrClass || "—"}</td>
-                <td className="p-2">{examCenterLabel(row.examCenter)}</td>
-                <td className="p-2">{formatInrFromPaise(row.feePaise)}</td>
+                <td className="p-2">{row.studentMobile || row.applicant.mobile || "—"}</td>
+                <td className="p-2">{courseTypeLabel(row.courseType)}</td>
+                <td className="p-2">{examinationGroupLabel(row.examinationGroup)}</td>
+                <td className="p-2">{examinationLabel(row.examinationGroup, row.selectedExamination)}</td>
+                <td className="p-2">{row.hostelRequired ? "Yes" : "No"}</td>
+                <td className="p-2">{formatInrExact(row.feePaise)}</td>
                 <td className="p-2 font-medium">{registrationPaymentLabel(row.status)}</td>
                 <td className="p-2">{row.createdAt.toLocaleDateString("en-IN")}</td>
                 <td className="p-2">

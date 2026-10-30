@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { saveDirector } from "../actions";
 import { Check, Field, SaveBar } from "@/components/admin/form";
-import { ImageField } from "@/components/admin/image-field";
 
 export default async function DirectorAdminPage() {
   const director = await prisma.directorProfile.findFirst({ orderBy: { displayOrder: "asc" } });
@@ -12,8 +11,8 @@ export default async function DirectorAdminPage() {
       <input type="hidden" name="id" value={director?.id || ""} />
       <Field name="name" label="Director name" defaultValue={director?.name} />
       <Field name="designation" label="Designation" defaultValue={director?.designation} />
-      <p className="text-sm font-medium">Photograph</p>
-      <ImageField name="photoUrl" defaultValue={director?.photoUrl} folder="director" />
+      <p className="text-sm text-muted">Director photograph is not displayed on the public website.</p>
+      <input type="hidden" name="photoUrl" value={director?.photoUrl || ""} />
       <Field name="shortBio" label="Short introduction" defaultValue={director?.shortBio} textarea />
       <Field name="message" label="Director message" defaultValue={director?.message} textarea />
       <Field name="displayOrder" label="Display order" type="number" defaultValue={director?.displayOrder ?? 1} />

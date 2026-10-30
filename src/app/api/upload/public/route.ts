@@ -15,14 +15,17 @@ export async function POST(request: NextRequest) {
   if (!file) {
     return NextResponse.json({ error: "No file uploaded." }, { status: 400 });
   }
-  const kind = (file.type || "").toLowerCase();
+  const requested = String(form.get("kind") || "applicant").toLowerCase();
+  const folder = requested === "signature" ? "signatures" : "applicants";
+  const kind = (file.type || "").toLowerCase().split(";")[0].trim();
   const name = (file.name || "").toLowerCase();
-  const isImage = kind.startsWith("image/") || /\.(jpe?g|png|webp|gif|avif|bmp)$/.test(name);
-  if (!isImage) {
-    return NextResponse.json({ error: "Only images are allowed." }, { status: 400 });
+  const allowedMime = kind === "image/jpeg" || kind === "image/jpg" || kind === "image/pjpeg" || kind === "image/png" || kind === "image/webp";
+  const allowedName = /\.(jpe?g|png|webp)$/.test(name);
+  if (!allowedMime && !allowedName) {
+    return NextResponse.json({ error: "Please upload a JPG, PNG, or WebP image under 4 MB." }, { status: 400 });
   }
   try {
-    const url = await saveUpload(file, "applicants");
+    const url = await saveUpload(file, folder, { imageOnly: true });
     return NextResponse.json({ url });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Upload failed" }, { status: 400 });

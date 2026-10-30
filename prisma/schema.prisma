@@ -78,6 +78,22 @@ enum GalleryCategory {
   OTHER
 }
 
+enum EducationMedium {
+  HINDI
+  ENGLISH
+}
+
+enum CourseType {
+  CRASH_COURSE
+  REGULAR_COURSE
+}
+
+enum ExaminationGroup {
+  BIOLOGY
+  MATHEMATICS
+  AGRICULTURE
+}
+
 enum ContentKind {
   FEATURE
   WHY_US
@@ -220,8 +236,17 @@ model CourseRegistration {
   studentMobile   String?
   receiptNumber   String?           @unique
   photoUrl        String?
+  signatureUrl    String?
   documentUrl     String?
   additionalPreparations String[] @default([])
+  fatherName      String?
+  motherName      String?
+  courseType      CourseType?
+  examinationGroup ExaminationGroup?
+  selectedExamination String?
+  hostelRequired  Boolean           @default(false)
+  courseFeePaise  Int?
+  hostelFeePaise  Int               @default(0)
   adminNotes      String?
   receiptToken    String?           @unique
   receiptFilename String?
@@ -239,6 +264,10 @@ model CourseRegistration {
   @@index([category])
   @@index([examCenter])
   @@index([applicationId])
+  @@index([courseType])
+  @@index([examinationGroup])
+  @@index([selectedExamination])
+  @@index([hostelRequired])
 }
 
 model Applicant {
@@ -256,6 +285,14 @@ model Applicant {
   state           String
   qualification   String
   schoolCollege   String?
+  educationMedium EducationMedium?
+  class10Percentage Float?
+  rationCardHolder Boolean?
+  rationCardNumber String?
+  aadhaarNumber   String?
+  village         String?
+  postOffice      String?
+  tehsil          String?
   /// Reserved for a future Student Portal. Not used in the current public/admin product.
   futureStudentId String?
   createdAt       DateTime             @default(now())
@@ -274,6 +311,8 @@ model Payment {
   courseId         String
   category         Category
   amountPaise      Int
+  courseFeePaise   Int?
+  hostelFeePaise   Int?
   currency         String             @default("INR")
   razorpayOrderId  String             @unique
   razorpayPaymentId String?
@@ -291,6 +330,11 @@ model Payment {
 }
 
 model ApplicationSequence {
+  year       Int @id
+  lastNumber Int @default(0)
+}
+
+model ReceiptSequence {
   year       Int @id
   lastNumber Int @default(0)
 }

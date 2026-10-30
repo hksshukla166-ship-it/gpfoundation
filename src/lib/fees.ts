@@ -37,11 +37,35 @@ export function feePaiseForCategory(
   }
 }
 
+export const HOSTEL_REGISTRATION_FEE_PAISE = 50000;
+
+export function hostelFeePaiseFor(hostelRequired: boolean) {
+  return hostelRequired ? HOSTEL_REGISTRATION_FEE_PAISE : 0;
+}
+
+export function registrationFeeBreakdown(courseFeePaise: number, hostelRequired: boolean) {
+  const hostelFeePaise = hostelFeePaiseFor(hostelRequired);
+  return {
+    courseFeePaise,
+    hostelFeePaise,
+    totalPaise: courseFeePaise + hostelFeePaise,
+  };
+}
+
 export function formatInrFromPaise(paise: number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0,
+  }).format(paise / 100);
+}
+
+export function formatInrExact(paise: number) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(paise / 100);
 }
 
