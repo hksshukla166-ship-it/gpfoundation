@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatInrExact } from "@/lib/fees";
 import { EXAM_CENTERS } from "@/lib/catalog";
 import { COURSE_TYPES, EXAMINATION_GROUPS, allExams, courseTypeLabel, examinationGroupLabel, examinationLabel, examsForGroup } from "@/lib/exam-groups";
+import { ensureRegistrationSchema, prismaErrorMessage } from "@/lib/db-ensure";
 import { registrationPaymentLabel } from "@/lib/payment-status";
 
 function query(values: Record<string, string | undefined>) {
@@ -65,17 +66,28 @@ export default async function RegistrationsPage({
       : {}),
   };
   const selectedGroupExams = sp.examinationGroup ? examsForGroup(sp.examinationGroup) : allExams();
-  const [items, total, courses] = await Promise.all([
-    prisma.courseRegistration.findMany({
-      where,
-      include: { course: true, applicant: { select: { fullName: true, address: true, district: true, state: true, mobile: true } } },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * take,
-      take,
-    }),
-    prisma.courseRegistration.count({ where }),
-    prisma.course.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-  ]);
+  let items: Prisma.CourseRegistrationGetPayload<{
+    include: { course: true; applicant: { select: { fullName: true; address: true; district: true; state: true; mobile: true } } };
+  }>[] = [];
+  let total = 0;
+  let courses: { id: string; name: string }[] = [];
+  let loadError: string | null = null;
+  try {
+    await ensureRegistrationSchema().catch(() => undefined);
+    [items, total, courses] = await Promise.all([
+      prisma.courseRegistration.findMany({
+        where,
+        include: { course: true, applicant: { select: { fullName: true, address: true, district: true, state: true, mobile: true } } },
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * take,
+        take,
+      }),
+      prisma.courseRegistration.count({ where }),
+      prisma.course.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    ]);
+  } catch (error) {
+    loadError = prismaErrorMessage(error);
+  }
 
   return (
     <div>
@@ -89,6 +101,7 @@ export default async function RegistrationsPage({
         Enrollment numbers are generated automatically. Payment status shows Pending until the bank confirms, then
         Successful.
       </p>
+      {loadError ? <p className="mt-4 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{loadError}</p> : null}
       <form className="my-4 flex flex-wrap gap-2">
         <input name="q" defaultValue={sp.q} placeholder="Registration number, name, or mobile" className="border px-3 py-2" />
         <select name="courseId" defaultValue={sp.courseId} className="border px-2">

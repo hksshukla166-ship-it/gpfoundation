@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { formatInrExact } from "@/lib/fees";
 import { examCenterLabel } from "@/lib/catalog";
@@ -7,17 +8,31 @@ import { paymentModeLabel, paymentStatusLabel, registrationPaymentLabel } from "
 import { courseTypeLabel, educationMediumLabel, examinationGroupLabel, examinationLabel } from "@/lib/exam-groups";
 import { maskAadhaar, maskRationNumber } from "@/lib/pii";
 import { updateRegistrationStatus } from "../../actions";
+import { ensureRegistrationSchema, prismaErrorMessage } from "@/lib/db-ensure";
 
 export default async function RegistrationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const row = await prisma.courseRegistration.findUnique({
-    where: { id },
-    include: {
-      course: true,
-      applicant: true,
-      payments: { orderBy: { createdAt: "desc" }, take: 1 },
-    },
-  });
+  let row: Prisma.CourseRegistrationGetPayload<{
+    include: { course: true; applicant: true; payments: true };
+  }> | null = null;
+  try {
+    await ensureRegistrationSchema().catch(() => undefined);
+    row = await prisma.courseRegistration.findUnique({
+      where: { id },
+      include: {
+        course: true,
+        applicant: true,
+        payments: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+  } catch (error) {
+    return (
+      <div className="max-w-3xl">
+        <h1 className="font-display text-3xl">Course registration</h1>
+        <p className="mt-4 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{prismaErrorMessage(error)}</p>
+      </div>
+    );
+  }
   if (!row) notFound();
 
   const name = row.studentName || row.applicant.fullName;
